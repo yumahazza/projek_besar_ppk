@@ -35,12 +35,12 @@ export default function HomeScreen() {
         <ThemedView style={styles.heroSection}>
           <AnimatedIcon />
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            Hidup Mahasiswa
           </ThemedText>
         </ThemedView>
 
         <ThemedText type="code" style={styles.code}>
-          get started
+          Blabalabalab
         </ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
