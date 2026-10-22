@@ -1,6 +1,5 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
+ * Design tokens and theme definitions based on DSG.md
  */
 
 import '@/global.css';
@@ -28,13 +27,9 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -63,3 +58,89 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+// === DSG DESIGN TOKENS (Design Guideline & System) ===
+
+export const APP_COLORS = {
+  // Brand
+  primary: '#2563EB',
+  primaryHover: '#1D4ED8',
+  primary500: '#3B82F6',
+  primary100: '#DBEAFE',
+  primary50: '#EFF6FF',
+
+  // Status
+  opened: '#16A34A',
+  openedSoft: '#DCFCE7',
+  notOpened: '#F59E0B',
+  notOpenedSoft: '#FEF3C7',
+  finished: '#64748B',
+  finishedSoft: '#F1F5F9',
+  danger: '#DC2626',
+  dangerSoft: '#FEE2E2',
+  error: '#DC2626',
+  errorSoft: '#FEE2E2',
+  info: '#2563EB',
+  infoSoft: '#DBEAFE',
+
+  // Neutrals
+  neutral950: '#0F172A',
+  neutral700: '#334155',
+  neutral500: '#64748B',
+  neutral300: '#CBD5E1',
+  neutral200: '#E2E8F0',
+  neutral100: '#F1F5F9',
+  neutral50: '#F8FAFC',
+  white: '#FFFFFF',
+} as const;
+
+export const APP_SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+} as const;
+
+export const APP_RADIUS = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  pill: 999,
+} as const;
+
+export const APP_SHADOWS = {
+  card: Platform.select({
+    ios: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+    },
+    android: {
+      elevation: 2,
+    },
+    web: {
+      boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)',
+    },
+    default: {},
+  }),
+  modal: Platform.select({
+    ios: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 24,
+    },
+    android: {
+      elevation: 10,
+    },
+    web: {
+      boxShadow: '0 8px 24px rgba(15, 23, 42, 0.15)',
+    },
+    default: {},
+  }),
+} as const;
