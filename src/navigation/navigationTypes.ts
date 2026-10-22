@@ -7,8 +7,8 @@ export interface NavigationProp {
   navigate: (screen: string, params?: any) => void;
   goBack: () => void;
   currentScreen: string;
+  params?: any;
 }
 
 export type AssistantScreenName = 'AssistantHome' | 'SessionRecap';
 export type StudentScreenName = 'StudentHome' | 'StudentHistory';
-
