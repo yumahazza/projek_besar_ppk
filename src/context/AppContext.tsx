@@ -44,6 +44,10 @@ export interface AppContextType {
   attendanceLogs: AttendanceRecord[];
   submitAttendance: (scheduleId: string, student?: User) => AttendanceResult;
   hasStudentAttended: (scheduleId: string, studentId: string) => boolean;
+  getStudentAttendanceForSchedule: (
+    scheduleId: string,
+    studentId: string
+  ) => AttendanceRecord | undefined;
   getAttendanceForSchedule: (scheduleId: string) => AttendanceRecord[];
   getStudentHistory: (studentId: string) => (AttendanceRecord & { schedule?: Schedule })[];
 
@@ -111,6 +115,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  const getStudentAttendanceForSchedule = (
+    scheduleId: string,
+    studentId: string
+  ): AttendanceRecord | undefined => {
+    return attendanceLogs.find(
+      (log) => log.scheduleId === scheduleId && log.studentId === studentId
+    );
+  };
+
   const getAttendanceForSchedule = (scheduleId: string): AttendanceRecord[] => {
     return attendanceLogs.filter((log) => log.scheduleId === scheduleId);
   };
@@ -130,30 +143,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const targetSchedule = schedules.find((s) => s.id === scheduleId);
 
     if (!targetSchedule) {
-      return { success: false, message: 'Jadwal tidak ditemukan.' };
+      return { success: false, message: 'Jadwal praktikum tidak ditemukan.' };
     }
 
+    // SRS-VAL-001: Tombol presensi disabled jika belum dibuka atau selesai
     if (targetSchedule.status === 'BELUM_DIBUKA') {
       return {
         success: false,
-        message: 'Presensi belum dibuka oleh asisten.',
+        message: 'Presensi belum dibuka oleh asisten praktikum.',
       };
     }
 
     if (targetSchedule.status === 'SELESAI') {
       return {
         success: false,
-        message: 'Sesi praktikum telah ditutup.',
+        message: 'Sesi praktikum telah ditutup. Presensi tidak dapat dilakukan lagi.',
       };
     }
 
+    // SRS-VAL-002: Pencegahan presensi ganda
     if (hasStudentAttended(scheduleId, student.id)) {
       return {
         success: false,
-        message: 'Anda sudah melakukan presensi pada sesi ini.',
+        message: 'Anda sudah melakukan presensi pada sesi ini sebelumnya.',
       };
     }
 
+    // SRS-STU-002: Catat waktu presensi lokal (timestamp)
     const timestamp = getCurrentTimestamp();
     const date = getCurrentDate();
     const newRecord: AttendanceRecord = {
@@ -169,6 +185,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setAttendanceLogs((prev) => [newRecord, ...prev]);
 
+    // SRS-STU-003: Feedback sukses presensi beserta waktu kehadiran
     return {
       success: true,
       message: `Presensi Berhasil! Waktu: ${timestamp}`,
@@ -202,6 +219,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         attendanceLogs,
         submitAttendance,
         hasStudentAttended,
+        getStudentAttendanceForSchedule,
         getAttendanceForSchedule,
         getStudentHistory,
         resetDemoData,
@@ -220,4 +238,3 @@ export const useApp = (): AppContextType => {
 };
 
 export default AppContext;
-

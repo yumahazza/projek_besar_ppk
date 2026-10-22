@@ -1,31 +1,36 @@
 /**
  * StudentHomeScreen Component
- * Screen for Student to see schedule, session status, submit attendance, and get success feedback
- * Follows DSG.md Section 15, 16, 18 & PRD SRS-STU-001/002/003, SRS-VAL-001/002
+ * Programmer: Hanna (Flow Praktikan & Form Presensi)
+ * SRS-STU-001: Melihat jadwal praktikum beserta respons status sesi (BELUM DIBUKA, DIBUKA, SELESAI)
+ * SRS-STU-002: Presensi kehadiran melalui tombol "Presensi Sekarang" saat sesi DIBUKA
+ * SRS-STU-003: Feedback Modal / Toast menampilkan waktu kehadiran (timestamp) setelah presensi berhasil
+ * SRS-VAL-001: Tombol presensi dinonaktifkan (disabled) saat sesi BELUM DIBUKA atau SELESAI
+ * SRS-VAL-002: Validasi pencegahan presensi ganda untuk mahasiswa yang sama
+ * Follows DSG.md Section 10, 15, 16, 18, 23, 25
  */
 
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
-  Modal,
-  TouchableWithoutFeedback,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useApp, AttendanceResult } from '@/context/AppContext';
 import { Card } from '@/components/Card';
-import { StatusBadge } from '@/components/StatusBadge';
 import { CustomButton } from '@/components/CustomButton';
-import { NavigationProp } from '@/navigation/navigationTypes';
+import { StatusBadge } from '@/components/StatusBadge';
 import {
   APP_COLORS,
   APP_RADIUS,
-  APP_SPACING,
   APP_SHADOWS,
+  APP_SPACING,
 } from '@/constants/theme';
+import { AttendanceResult, useApp } from '@/context/AppContext';
+import { NavigationProp } from '@/navigation/navigationTypes';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import {
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
 
 interface StudentHomeScreenProps {
   navigation: NavigationProp;
@@ -38,8 +43,10 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
     activeUser,
     activeSchedule,
     schedules,
+    setActiveScheduleId,
     submitAttendance,
     hasStudentAttended,
+    getStudentAttendanceForSchedule,
   } = useApp();
 
   const [feedbackModal, setFeedbackModal] = useState<{
@@ -58,13 +65,20 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
     ? hasStudentAttended(currentSchedule.id, activeUser.id)
     : false;
 
+  const studentRecord = currentSchedule
+    ? getStudentAttendanceForSchedule(currentSchedule.id, activeUser.id)
+    : undefined;
+
   const isSessionOpen = currentSchedule?.status === 'DIBUKA';
 
+  // SRS-STU-002: Aksi presensi saat sesi DIBUKA
   const handleAttendancePress = () => {
     if (!currentSchedule) return;
 
+    // Panggil logika presensi dengan validasi waktu & validasi presensi ganda
     const result: AttendanceResult = submitAttendance(currentSchedule.id);
 
+    // SRS-STU-003: Tampilkan feedback modal dengan waktu kehadiran
     setFeedbackModal({
       visible: true,
       success: result.success,
@@ -78,29 +92,49 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Student Welcome Header */}
+        {/* Welcome Header Praktikan */}
         <View style={styles.header}>
           <Text style={styles.welcomeTitle}>Presensi Mahasiswa</Text>
           <Text style={styles.welcomeSubtitle}>
-            Pastikan Anda berada di ruang praktikum saat melakukan presensi
+            Pastikan Anda terhubung di jaringan lab dan berada di ruang kelas saat presensi
           </Text>
         </View>
 
-        {/* Main Attendance Focal Card */}
+        {/* SRS-STU-001: Main Schedule & Session Status Focal Card */}
         {currentSchedule && (
           <Card
             style={styles.mainCard}
             highlighted={isSessionOpen && !isAttended}>
+            {/* Header: StatusBadge & Date */}
             <View style={styles.statusRow}>
               <StatusBadge status={currentSchedule.status} size="md" />
-              <Text style={styles.dateText}>{currentSchedule.date}</Text>
+              <View style={styles.dateBadge}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={13}
+                  color={APP_COLORS.neutral500}
+                />
+                <Text style={styles.dateText}>{currentSchedule.date}</Text>
+              </View>
             </View>
 
+            {/* Course Title & Class */}
             <Text style={styles.courseTitle}>{currentSchedule.courseName}</Text>
             <Text style={styles.classSubtitle}>{currentSchedule.className}</Text>
 
+            {/* Live Indicator Banner jika sesi DIBUKA */}
+            {isSessionOpen && !isAttended && (
+              <View style={styles.liveBanner}>
+                <View style={styles.pulsingDot} />
+                <Text style={styles.liveBannerText}>
+                  Sesi Praktikum Dibuka • Presensi Tersedia Sekarang
+                </Text>
+              </View>
+            )}
+
             <View style={styles.divider} />
 
+            {/* Session Info Grid */}
             <View style={styles.infoGrid}>
               <View style={styles.infoCol}>
                 <View style={styles.iconCircle}>
@@ -131,10 +165,25 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
               </View>
             </View>
 
-            {/* Attendance CTA Section */}
+            {/* Asisten Info Row */}
+            <View style={styles.assistantRow}>
+              <Ionicons
+                name="person-circle-outline"
+                size={18}
+                color={APP_COLORS.neutral500}
+              />
+              <Text style={styles.assistantText}>
+                Asisten Lab:{' '}
+                <Text style={styles.assistantName}>
+                  {currentSchedule.assistantName}
+                </Text>
+              </Text>
+            </View>
+
+            {/* SRS-STU-002, SRS-VAL-001, SRS-VAL-002: Dynamic Attendance CTA Section */}
             <View style={styles.ctaContainer}>
+              {/* KASUS A: SUDAH PRESENSI (SRS-VAL-002: Validasi Presensi Ganda) */}
               {isAttended ? (
-                // Already Attended State
                 <View style={styles.attendedBox}>
                   <View style={styles.attendedHeaderRow}>
                     <Ionicons
@@ -147,6 +196,18 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                   <Text style={styles.attendedDescription}>
                     Anda telah berhasil melakukan presensi pada sesi ini.
                   </Text>
+                  {studentRecord && (
+                    <View style={styles.timestampBadge}>
+                      <Ionicons
+                        name="time-outline"
+                        size={14}
+                        color={APP_COLORS.opened}
+                      />
+                      <Text style={styles.timestampBadgeText}>
+                        Waktu Presensi: {studentRecord.timestamp}
+                      </Text>
+                    </View>
+                  )}
                   <CustomButton
                     title="✓ Sudah Presensi"
                     variant="outline"
@@ -154,9 +215,12 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                     onPress={() => {}}
                     style={styles.attendedBtn}
                   />
+                  <Text style={styles.attendedHint}>
+                    Pencegahan presensi ganda aktif. Presensi Anda telah tersimpan di sistem.
+                  </Text>
                 </View>
               ) : isSessionOpen ? (
-                // Session is Open and Ready for Attendance
+                /* KASUS B: SESI DIBUKA & BELUM PRESENSI (SRS-STU-002) */
                 <View>
                   <CustomButton
                     title="Presensi Sekarang"
@@ -165,18 +229,18 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                     leftIcon={
                       <Ionicons
                         name="checkmark-circle"
-                        size={20}
+                        size={22}
                         color={APP_COLORS.white}
                       />
                     }
                     onPress={handleAttendancePress}
                   />
                   <Text style={styles.ctaHint}>
-                    Tekan tombol di atas untuk mencatatkan kehadiran Anda
+                    Tekan tombol di atas untuk mencatatkan kehadiran Anda secara realtime
                   </Text>
                 </View>
               ) : currentSchedule.status === 'BELUM_DIBUKA' ? (
-                // Session Not Yet Opened
+                /* KASUS C: SESI BELUM DIBUKA (SRS-VAL-001) */
                 <View>
                   <CustomButton
                     title="Presensi Belum Dibuka"
@@ -185,12 +249,19 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                     size="lg"
                     onPress={() => {}}
                   />
-                  <Text style={styles.ctaHint}>
-                    Sesi akan aktif setelah asisten membuka praktikum
-                  </Text>
+                  <View style={styles.explanatoryBox}>
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={16}
+                      color={APP_COLORS.notOpened}
+                    />
+                    <Text style={styles.explanatoryText}>
+                      Sesi praktikum belum dibuka oleh asisten. Tombol presensi akan aktif otomatis saat sesi dibuka.
+                    </Text>
+                  </View>
                 </View>
               ) : (
-                // Session Closed / SELESAI
+                /* KASUS D: SESI TELAH SELESAI / TUTUP (SRS-VAL-001) */
                 <View>
                   <CustomButton
                     title="Sesi Telah Ditutup"
@@ -199,16 +270,91 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                     size="lg"
                     onPress={() => {}}
                   />
-                  <Text style={styles.ctaHint}>
-                    Presensi untuk sesi ini sudah berakhir dan telah ditutup oleh asisten
-                  </Text>
+                  <View style={styles.explanatoryBox}>
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={16}
+                      color={APP_COLORS.neutral500}
+                    />
+                    <Text style={styles.explanatoryText}>
+                      Sesi praktikum telah ditutup oleh asisten. Presensi untuk sesi ini sudah berakhir.
+                    </Text>
+                  </View>
                 </View>
               )}
             </View>
           </Card>
         )}
 
-        {/* View History Navigation Button */}
+        {/* SRS-STU-001: Daftar Jadwal Praktikan Lainnya */}
+        <View style={styles.scheduleListSection}>
+          <Text style={styles.scheduleListTitle}>Daftar Praktikum Saya</Text>
+          {schedules.map((item) => {
+            const isSelected = item.id === currentSchedule?.id;
+            const attendedItem = hasStudentAttended(item.id, activeUser.id);
+
+            return (
+              <Card
+                key={item.id}
+                onPress={() => setActiveScheduleId(item.id)}
+                style={[
+                  styles.scheduleItemCard,
+                  isSelected && styles.scheduleItemSelected,
+                ]}>
+                <View style={styles.scheduleItemTop}>
+                  <View style={styles.scheduleItemInfo}>
+                    <Text style={styles.itemCourseName}>{item.courseName}</Text>
+                    <Text style={styles.itemClassSubtitle}>
+                      {item.className} • {item.room}
+                    </Text>
+                    <Text style={styles.itemTimeText}>
+                      {item.date} • {item.time}
+                    </Text>
+                  </View>
+                  <StatusBadge status={item.status} size="sm" />
+                </View>
+
+                <View style={styles.itemDivider} />
+
+                <View style={styles.itemFooter}>
+                  {attendedItem ? (
+                    <View style={styles.itemAttendedPill}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={13}
+                        color={APP_COLORS.opened}
+                      />
+                      <Text style={styles.itemAttendedText}>Sudah Hadir</Text>
+                    </View>
+                  ) : item.status === 'DIBUKA' ? (
+                    <View style={styles.itemReadyPill}>
+                      <Ionicons
+                        name="alert-circle"
+                        size={13}
+                        color={APP_COLORS.opened}
+                      />
+                      <Text style={styles.itemReadyText}>Presensi Tersedia</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.itemStatusDesc}>
+                      {item.status === 'BELUM_DIBUKA'
+                        ? 'Menunggu sesi dibuka'
+                        : 'Sesi berakhir'}
+                    </Text>
+                  )}
+
+                  {isSelected && (
+                    <Text style={styles.selectedScheduleLabel}>
+                      Sedang Dipantau
+                    </Text>
+                  )}
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+
+        {/* Navigasi ke Riwayat Kehadiran */}
         <View style={styles.historyActionWrapper}>
           <CustomButton
             title="Catatan Kehadiran Saya"
@@ -233,7 +379,7 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
         </View>
       </ScrollView>
 
-      {/* Success / Feedback Modal */}
+      {/* SRS-STU-003: Feedback Modal Sukses / Validasi Presensi */}
       <Modal
         visible={feedbackModal.visible}
         transparent
@@ -248,6 +394,7 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
           <View style={styles.feedbackOverlay}>
             <TouchableWithoutFeedback>
               <View style={[styles.feedbackBox, APP_SHADOWS.modal]}>
+                {/* Status Icon */}
                 <View
                   style={[
                     styles.feedbackIconCircle,
@@ -261,7 +408,7 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                         ? 'checkmark-circle'
                         : 'alert-circle'
                     }
-                    size={42}
+                    size={46}
                     color={
                       feedbackModal.success
                         ? APP_COLORS.opened
@@ -270,20 +417,85 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                   />
                 </View>
 
+                {/* Modal Title */}
                 <Text style={styles.feedbackTitle}>
                   {feedbackModal.success
                     ? 'Presensi Berhasil!'
-                    : 'Gagal Presensi'}
+                    : 'Pemberitahuan Presensi'}
                 </Text>
 
-                <Text style={styles.feedbackMessage}>
-                  {feedbackModal.message}
-                </Text>
+                {/* Feedback Description & Timestamp Banner */}
+                {feedbackModal.success ? (
+                  <View style={styles.successContent}>
+                    <View style={styles.timestampHighlightBox}>
+                      <Ionicons
+                        name="time"
+                        size={16}
+                        color={APP_COLORS.opened}
+                      />
+                      <Text style={styles.timestampHighlightText}>
+                        Waktu Kehadiran: {feedbackModal.timestamp}
+                      </Text>
+                    </View>
 
-                <View style={styles.feedbackBtnContainer}>
+                    {/* Receipt Details Card */}
+                    <View style={styles.receiptCard}>
+                      <View style={styles.receiptRow}>
+                        <Text style={styles.receiptLabel}>Praktikan</Text>
+                        <Text style={styles.receiptValue}>{activeUser.name}</Text>
+                      </View>
+                      <View style={styles.receiptRow}>
+                        <Text style={styles.receiptLabel}>NIM</Text>
+                        <Text style={styles.receiptValue}>
+                          {activeUser.nim || '-'}
+                        </Text>
+                      </View>
+                      <View style={styles.receiptRow}>
+                        <Text style={styles.receiptLabel}>Praktikum</Text>
+                        <Text style={styles.receiptValue}>
+                          {currentSchedule?.courseName} — {currentSchedule?.className}
+                        </Text>
+                      </View>
+                      <View style={styles.receiptRow}>
+                        <Text style={styles.receiptLabel}>Ruangan</Text>
+                        <Text style={styles.receiptValue}>
+                          {currentSchedule?.room}
+                        </Text>
+                      </View>
+                      <View style={styles.receiptRow}>
+                        <Text style={styles.receiptLabel}>Status</Text>
+                        <Text style={[styles.receiptValue, styles.receiptHadir]}>
+                          ✓ Hadir
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.feedbackMessage}>
+                    {feedbackModal.message}
+                  </Text>
+                )}
+
+                {/* Modal Action Buttons */}
+                <View style={styles.feedbackBtnGroup}>
+                  {feedbackModal.success && (
+                    <CustomButton
+                      title="Lihat Catatan Kehadiran"
+                      variant="secondary"
+                      size="md"
+                      onPress={() => {
+                        setFeedbackModal({
+                          visible: false,
+                          success: false,
+                          message: '',
+                        });
+                        navigation.navigate('StudentHistory');
+                      }}
+                    />
+                  )}
                   <CustomButton
-                    title="Oke, Mengerti"
-                    variant="primary"
+                    title={feedbackModal.success ? 'Selesai' : 'Oke, Mengerti'}
+                    variant={feedbackModal.success ? 'primary' : 'outline'}
                     size="md"
                     onPress={() =>
                       setFeedbackModal({
@@ -324,6 +536,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: APP_COLORS.neutral500,
     marginTop: 4,
+    lineHeight: 20,
   },
   mainCard: {
     marginBottom: APP_SPACING.xl,
@@ -335,9 +548,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: APP_SPACING.md,
   },
+  dateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.neutral100,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: APP_RADIUS.pill,
+    gap: 4,
+  },
   dateText: {
     fontSize: 12,
-    color: APP_COLORS.neutral500,
+    color: APP_COLORS.neutral700,
     fontWeight: '500',
   },
   courseTitle: {
@@ -346,9 +568,33 @@ const styles = StyleSheet.create({
     color: APP_COLORS.neutral950,
   },
   classSubtitle: {
-    fontSize: 16,
-    color: APP_COLORS.neutral700,
+    fontSize: 15,
+    fontWeight: '600',
+    color: APP_COLORS.primary,
     marginTop: 2,
+  },
+  liveBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.openedSoft,
+    borderColor: '#BBF7D0',
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: APP_SPACING.md,
+    borderRadius: APP_RADIUS.md,
+    marginTop: APP_SPACING.md,
+    gap: 8,
+  },
+  pulsingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: APP_COLORS.opened,
+  },
+  liveBannerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: APP_COLORS.opened,
   },
   divider: {
     height: 1,
@@ -358,7 +604,7 @@ const styles = StyleSheet.create({
   infoGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: APP_SPACING.xl,
+    marginBottom: APP_SPACING.md,
     gap: APP_SPACING.md,
   },
   infoCol: {
@@ -386,6 +632,24 @@ const styles = StyleSheet.create({
     color: APP_COLORS.neutral950,
     fontWeight: '600',
     marginTop: 1,
+  },
+  assistantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.neutral100,
+    paddingHorizontal: APP_SPACING.md,
+    paddingVertical: 6,
+    borderRadius: APP_RADIUS.md,
+    gap: 6,
+    marginBottom: APP_SPACING.lg,
+  },
+  assistantText: {
+    fontSize: 12,
+    color: APP_COLORS.neutral700,
+  },
+  assistantName: {
+    fontWeight: '600',
+    color: APP_COLORS.neutral950,
   },
   ctaContainer: {
     marginTop: APP_SPACING.xs,
@@ -420,11 +684,137 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: APP_COLORS.neutral700,
     textAlign: 'center',
+    marginBottom: APP_SPACING.sm,
+  },
+  timestampBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.white,
+    paddingHorizontal: APP_SPACING.md,
+    paddingVertical: 4,
+    borderRadius: APP_RADIUS.pill,
+    gap: 6,
     marginBottom: APP_SPACING.md,
+  },
+  timestampBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: APP_COLORS.opened,
   },
   attendedBtn: {
     backgroundColor: APP_COLORS.white,
     borderColor: '#86EFAC',
+  },
+  attendedHint: {
+    fontSize: 11,
+    color: APP_COLORS.neutral500,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  explanatoryBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: APP_COLORS.neutral100,
+    padding: APP_SPACING.md,
+    borderRadius: APP_RADIUS.md,
+    marginTop: APP_SPACING.sm,
+    gap: 8,
+  },
+  explanatoryText: {
+    flex: 1,
+    fontSize: 12,
+    color: APP_COLORS.neutral700,
+    lineHeight: 18,
+  },
+  scheduleListSection: {
+    marginBottom: APP_SPACING.lg,
+  },
+  scheduleListTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: APP_COLORS.neutral950,
+    marginBottom: APP_SPACING.md,
+  },
+  scheduleItemCard: {
+    marginBottom: APP_SPACING.md,
+    padding: APP_SPACING.md,
+  },
+  scheduleItemSelected: {
+    borderColor: APP_COLORS.primary500,
+    borderWidth: 1.5,
+    backgroundColor: '#FAF5FF',
+  },
+  scheduleItemTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  scheduleItemInfo: {
+    flex: 1,
+    marginRight: APP_SPACING.sm,
+  },
+  itemCourseName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: APP_COLORS.neutral950,
+  },
+  itemClassSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: APP_COLORS.primary,
+    marginTop: 2,
+  },
+  itemTimeText: {
+    fontSize: 12,
+    color: APP_COLORS.neutral500,
+    marginTop: 2,
+  },
+  itemDivider: {
+    height: 1,
+    backgroundColor: APP_COLORS.neutral200,
+    marginVertical: APP_SPACING.sm,
+  },
+  itemFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemAttendedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: APP_COLORS.openedSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: APP_RADIUS.pill,
+  },
+  itemAttendedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.opened,
+  },
+  itemReadyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: APP_COLORS.openedSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: APP_RADIUS.pill,
+  },
+  itemReadyText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: APP_COLORS.opened,
+  },
+  itemStatusDesc: {
+    fontSize: 12,
+    color: APP_COLORS.neutral500,
+  },
+  selectedScheduleLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.primary,
   },
   historyActionWrapper: {
     marginTop: APP_SPACING.xs,
@@ -438,25 +828,29 @@ const styles = StyleSheet.create({
   },
   feedbackBox: {
     width: '100%',
-    maxWidth: 360,
+    maxWidth: 380,
     backgroundColor: APP_COLORS.white,
     borderRadius: APP_RADIUS.xl,
     padding: APP_SPACING.xxl,
     alignItems: 'center',
   },
   feedbackIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: APP_SPACING.lg,
   },
   feedbackSuccessCircle: {
     backgroundColor: APP_COLORS.openedSoft,
+    borderColor: '#86EFAC',
+    borderWidth: 2,
   },
   feedbackErrorCircle: {
     backgroundColor: APP_COLORS.errorSoft,
+    borderColor: '#FECACA',
+    borderWidth: 2,
   },
   feedbackTitle: {
     fontSize: 20,
@@ -465,6 +859,54 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: APP_SPACING.xs,
   },
+  successContent: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: APP_SPACING.xl,
+  },
+  timestampHighlightBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.openedSoft,
+    paddingHorizontal: APP_SPACING.md,
+    paddingVertical: 6,
+    borderRadius: APP_RADIUS.pill,
+    gap: 6,
+    marginVertical: APP_SPACING.sm,
+  },
+  timestampHighlightText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: APP_COLORS.opened,
+  },
+  receiptCard: {
+    width: '100%',
+    backgroundColor: APP_COLORS.neutral50,
+    borderColor: APP_COLORS.neutral200,
+    borderWidth: 1,
+    borderRadius: APP_RADIUS.md,
+    padding: APP_SPACING.md,
+    marginTop: APP_SPACING.sm,
+    gap: 6,
+  },
+  receiptRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  receiptLabel: {
+    fontSize: 12,
+    color: APP_COLORS.neutral500,
+  },
+  receiptValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: APP_COLORS.neutral950,
+  },
+  receiptHadir: {
+    color: APP_COLORS.opened,
+    fontWeight: '700',
+  },
   feedbackMessage: {
     fontSize: 14,
     color: APP_COLORS.neutral700,
@@ -472,10 +914,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: APP_SPACING.xl,
   },
-  feedbackBtnContainer: {
+  feedbackBtnGroup: {
     width: '100%',
+    gap: APP_SPACING.sm,
   },
 });
 
 export default StudentHomeScreen;
-
