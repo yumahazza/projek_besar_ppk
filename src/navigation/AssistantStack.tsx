@@ -11,15 +11,19 @@ import { NavigationProp, AssistantScreenName } from '@/navigation/navigationType
 
 export const AssistantStack: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<AssistantScreenName>('AssistantHome');
+  const [screenParams, setScreenParams] = useState<any>(undefined);
 
   const navigation: NavigationProp = {
     currentScreen,
-    navigate: (screen: string) => {
+    params: screenParams,
+    navigate: (screen: string, params?: any) => {
       if (screen === 'SessionRecap' || screen === 'AssistantHome') {
+        setScreenParams(params);
         setCurrentScreen(screen as AssistantScreenName);
       }
     },
     goBack: () => {
+      setScreenParams(undefined);
       setCurrentScreen('AssistantHome');
     },
   };
@@ -43,4 +47,3 @@ const styles = StyleSheet.create({
 });
 
 export default AssistantStack;
-

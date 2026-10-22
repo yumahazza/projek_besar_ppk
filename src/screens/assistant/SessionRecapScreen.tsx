@@ -1,10 +1,13 @@
 /**
  * SessionRecapScreen Component
- * Screen for Assistant to view attendance recap list and close the session
- * Follows DSG.md Section 20 & PRD SRS-AST-003/005, SRS-UI-003
+ * Programmer: Fritz (Flow Asisten & Pengelolaan Sesi)
+ * SRS-AST-003: Tutup sesi praktikum saat sesi DIBUKA
+ * SRS-AST-004: Modal konfirmasi sebelum tutup sesi
+ * SRS-AST-005: Rekap daftar praktikan yang sudah presensi + timestamp kehadiran
+ * Follows DSG.md Section 17, 20, 21, 23
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +15,7 @@ import {
   ScrollView,
   SafeAreaView,
   Pressable,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
@@ -34,49 +38,98 @@ interface SessionRecapScreenProps {
 export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
   navigation,
 }) => {
-  const { activeSchedule, schedules, getAttendanceForSchedule, closeSession } =
-    useApp();
+  const {
+    activeSchedule,
+    schedules,
+    getAttendanceForSchedule,
+    closeSession,
+  } = useApp();
 
   const [closeModalVisible, setCloseModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [closedBannerVisible, setClosedBannerVisible] = useState(false);
 
-  const currentSchedule = activeSchedule || schedules[0];
-  const attendanceLogs = currentSchedule
-    ? getAttendanceForSchedule(currentSchedule.id)
-    : [];
+  // Jika navigasi membawa target scheduleId tertentu, prioritaskan schedule tersebut
+  const targetScheduleId = navigation.params?.scheduleId || activeSchedule?.id;
+  const currentSchedule =
+    schedules.find((s) => s.id === targetScheduleId) ||
+    activeSchedule ||
+    schedules[0];
 
-  const handleCloseSession = () => {
+  // SRS-AST-005: Daftar kehadiran untuk jadwal ini
+  const allAttendanceLogs = useMemo(() => {
+    return currentSchedule ? getAttendanceForSchedule(currentSchedule.id) : [];
+  }, [currentSchedule, getAttendanceForSchedule]);
+
+  // Filter pencarian berdasarkan nama mahasiswa atau NIM
+  const filteredAttendanceLogs = useMemo(() => {
+    if (!searchQuery.trim()) return allAttendanceLogs;
+    const q = searchQuery.toLowerCase().trim();
+    return allAttendanceLogs.filter(
+      (log) =>
+        log.studentName.toLowerCase().includes(q) ||
+        (log.nim && log.nim.toLowerCase().includes(q))
+    );
+  }, [allAttendanceLogs, searchQuery]);
+
+  // SRS-AST-003: Tutup sesi setelah konfirmasi
+  const handleConfirmCloseSession = () => {
     if (currentSchedule) {
       closeSession(currentSchedule.id);
+      setClosedBannerVisible(true);
+      setTimeout(() => setClosedBannerVisible(false), 4000);
     }
     setCloseModalVisible(false);
   };
 
-  const attendanceRatio = currentSchedule
-    ? attendanceLogs.length / (currentSchedule.totalStudents || 1)
+  const totalRegistered = currentSchedule?.totalStudents || 20;
+  const totalAttended = allAttendanceLogs.length;
+  const totalAbsent = Math.max(0, totalRegistered - totalAttended);
+  const attendancePercent = totalRegistered > 0
+    ? Math.round((totalAttended / totalRegistered) * 100)
     : 0;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header Bar */}
+      {/* Top Header Bar with Back Button */}
       <View style={styles.navBar}>
         <Pressable
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel="Kembali ke Dashboard">
+          accessibilityLabel="Kembali ke Dashboard Asisten">
           <Ionicons name="arrow-back" size={22} color={APP_COLORS.neutral950} />
         </Pressable>
-        <Text style={styles.navTitle}>Rekap Presensi</Text>
-        <View style={styles.placeholder} />
+        <View style={styles.navTitleGroup}>
+          <Text style={styles.navTitle}>Rekap Presensi</Text>
+          <Text style={styles.navSubtitle} numberOfLines={1}>
+            {currentSchedule?.courseName} • {currentSchedule?.className}
+          </Text>
+        </View>
+        <View style={styles.navPlaceholder} />
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Schedule Info Summary Card */}
+        {/* Banner Notifikasi Sesi Ditutup */}
+        {closedBannerVisible && (
+          <View style={styles.closedBanner}>
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={APP_COLORS.finished}
+            />
+            <Text style={styles.closedBannerText}>
+              Sesi praktikum telah berhasil DITUTUP. Presensi sudah diakhiri.
+            </Text>
+          </View>
+        )}
+
+        {/* Schedule Summary & Stats Card */}
         {currentSchedule && (
           <Card style={styles.summaryCard}>
-            <View style={styles.summaryTop}>
+            <View style={styles.summaryTopRow}>
               <View style={styles.summaryTextGroup}>
                 <Text style={styles.courseTitle}>
                   {currentSchedule.courseName}
@@ -84,56 +137,134 @@ export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
                 <Text style={styles.classSubtitle}>
                   {currentSchedule.className} • {currentSchedule.room}
                 </Text>
-                <Text style={styles.timeSubtitle}>
-                  {currentSchedule.time} • {currentSchedule.date}
-                </Text>
+                <View style={styles.scheduleInfoRow}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={13}
+                    color={APP_COLORS.neutral500}
+                  />
+                  <Text style={styles.scheduleInfoText}>
+                    {currentSchedule.date} • {currentSchedule.time}
+                  </Text>
+                </View>
               </View>
-              <StatusBadge status={currentSchedule.status} size="sm" />
+              <StatusBadge status={currentSchedule.status} size="md" />
             </View>
 
-            {/* Attendance Progress Indicator */}
+            {/* SRS-AST-005: Metrics Grid */}
+            <View style={styles.statsGrid}>
+              <View style={[styles.statBox, styles.statBoxPrimary]}>
+                <Text style={styles.statBoxNumber}>{totalAttended}</Text>
+                <Text style={styles.statBoxLabel}>Hadir</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statBoxNumber}>{totalAbsent}</Text>
+                <Text style={styles.statBoxLabel}>Belum Hadir</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statBoxNumber}>{totalRegistered}</Text>
+                <Text style={styles.statBoxLabel}>Total Praktikan</Text>
+              </View>
+            </View>
+
+            {/* Progress Bar Track */}
             <View style={styles.progressContainer}>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressLabel}>Tingkat Kehadiran</Text>
-                <Text style={styles.progressStats}>
-                  <Text style={styles.progressHighlight}>
-                    {attendanceLogs.length}
-                  </Text>{' '}
-                  / {currentSchedule.totalStudents} Mahasiswa
+                <Text style={styles.progressLabel}>Persentase Kehadiran</Text>
+                <Text style={styles.progressPercentage}>
+                  {attendancePercent}%
                 </Text>
               </View>
               <View style={styles.progressBarTrack}>
                 <View
                   style={[
                     styles.progressBarFill,
-                    { width: `${Math.min(100, Math.round(attendanceRatio * 100))}%` },
+                    { width: `${Math.min(100, attendancePercent)}%` },
                   ]}
                 />
               </View>
             </View>
 
-            {/* Close Session CTA if still open */}
+            {/* SRS-AST-003: Tutup Sesi CTA Button from Recap Screen */}
             {currentSchedule.status === 'DIBUKA' && (
               <View style={styles.closeActionContainer}>
                 <CustomButton
-                  title="Tutup Sesi Praktikum"
+                  title="Tutup Sesi Praktikum Sekarang"
                   variant="danger"
+                  size="md"
                   leftIcon={
-                    <Ionicons name="stop" size={16} color={APP_COLORS.white} />
+                    <Ionicons
+                      name="stop-circle"
+                      size={18}
+                      color={APP_COLORS.white}
+                    />
                   }
                   onPress={() => setCloseModalVisible(true)}
-                  size="sm"
                 />
+              </View>
+            )}
+
+            {currentSchedule.status === 'SELESAI' && (
+              <View style={styles.finishedNoticeBox}>
+                <Ionicons
+                  name="lock-closed"
+                  size={16}
+                  color={APP_COLORS.finished}
+                />
+                <Text style={styles.finishedNoticeText}>
+                  Sesi ini telah ditutup. Laporan rekapitulasi kehadiran bersifat final.
+                </Text>
               </View>
             )}
           </Card>
         )}
 
-        {/* Attendance List Section */}
+        {/* SRS-AST-005: Attendance List Section */}
         <View style={styles.listSection}>
-          <Text style={styles.listSectionTitle}>Daftar Mahasiswa Hadir</Text>
+          <View style={styles.listHeaderRow}>
+            <Text style={styles.listSectionTitle}>Daftar Presensi Mahasiswa</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>
+                {allAttendanceLogs.length} Terdata
+              </Text>
+            </View>
+          </View>
 
-          {attendanceLogs.length === 0 ? (
+          {/* Search Box */}
+          {allAttendanceLogs.length > 0 && (
+            <View style={styles.searchContainer}>
+              <Ionicons
+                name="search"
+                size={18}
+                color={APP_COLORS.neutral500}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Cari nama mahasiswa atau NIM..."
+                placeholderTextColor={APP_COLORS.neutral500}
+                style={styles.searchInput}
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <Pressable
+                  onPress={() => setSearchQuery('')}
+                  style={styles.searchClearBtn}>
+                  <Ionicons
+                    name="close-circle"
+                    size={16}
+                    color={APP_COLORS.neutral500}
+                  />
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* State 1: Belum ada praktikan sama sekali */}
+          {allAttendanceLogs.length === 0 ? (
             <Card style={styles.emptyCard}>
               <EmptyState
                 iconName="people-outline"
@@ -141,27 +272,67 @@ export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
                 description="Belum ada praktikan yang mencatatkan kehadiran pada sesi ini. Data akan otomatis terupdate saat praktikan melakukan presensi."
               />
             </Card>
+          ) : filteredAttendanceLogs.length === 0 ? (
+            /* State 2: Pencarian tidak menemukan hasil */
+            <Card style={styles.emptySearchCard}>
+              <Ionicons
+                name="search-outline"
+                size={32}
+                color={APP_COLORS.neutral500}
+              />
+              <Text style={styles.emptySearchTitle}>
+                Mahasiswa Tidak Ditemukan
+              </Text>
+              <Text style={styles.emptySearchDesc}>
+                Tidak ada data kehadiran yang cocok dengan kata kunci &quot;{searchQuery}&quot;.
+              </Text>
+              <Pressable
+                onPress={() => setSearchQuery('')}
+                style={styles.resetSearchBtn}>
+                <Text style={styles.resetSearchText}>Hapus Pencarian</Text>
+              </Pressable>
+            </Card>
           ) : (
-            attendanceLogs.map((item, index) => (
+            /* State 3: Render daftar praktikan hadir dengan timestamp */
+            filteredAttendanceLogs.map((item, index) => (
               <Card key={item.id} style={styles.attendeeCard}>
                 <View style={styles.attendeeRow}>
+                  {/* Nomor Urut */}
                   <View style={styles.indexCircle}>
-                    <Text style={styles.indexNumber}>{index + 1}</Text>
+                    <Text style={styles.indexNumber}>#{index + 1}</Text>
                   </View>
+
+                  {/* Detail Nama & NIM */}
                   <View style={styles.attendeeDetails}>
                     <Text style={styles.attendeeName}>{item.studentName}</Text>
-                    <Text style={styles.attendeeNim}>NIM: {item.nim}</Text>
+                    <View style={styles.nimRow}>
+                      <Ionicons
+                        name="id-card-outline"
+                        size={12}
+                        color={APP_COLORS.neutral500}
+                      />
+                      <Text style={styles.attendeeNim}>NIM: {item.nim}</Text>
+                    </View>
                   </View>
+
+                  {/* Status & Timestamp */}
                   <View style={styles.attendeeTimeCol}>
                     <View style={styles.statusPill}>
                       <Ionicons
                         name="checkmark-circle"
-                        size={14}
+                        size={13}
                         color={APP_COLORS.opened}
                       />
                       <Text style={styles.statusPillText}>Hadir</Text>
                     </View>
-                    <Text style={styles.timestampText}>{item.timestamp}</Text>
+                    <View style={styles.timestampRow}>
+                      <Ionicons
+                        name="time-outline"
+                        size={12}
+                        color={APP_COLORS.neutral500}
+                      />
+                      <Text style={styles.timestampText}>{item.timestamp}</Text>
+                    </View>
                   </View>
                 </View>
               </Card>
@@ -170,11 +341,11 @@ export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
         </View>
       </ScrollView>
 
-      {/* Close Session Confirmation Modal */}
+      {/* SRS-AST-004: Modal Konfirmasi Tutup Sesi */}
       <ConfirmModal
         visible={closeModalVisible}
         title="Tutup Sesi Praktikum?"
-        subtitle="Setelah sesi ditutup, praktikan tidak dapat melakukan presensi kehadiran lagi."
+        subtitle="Setelah sesi ditutup, status akan berubah menjadi SELESAI dan praktikan tidak dapat melakukan presensi lagi."
         details={{
           courseName: currentSchedule?.courseName,
           className: currentSchedule?.className,
@@ -184,7 +355,7 @@ export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
         confirmText="Tutup Sesi"
         cancelText="Batal"
         confirmVariant="danger"
-        onConfirm={handleCloseSession}
+        onConfirm={handleConfirmCloseSession}
         onCancel={() => setCloseModalVisible(false)}
       />
     </SafeAreaView>
@@ -209,13 +380,23 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 6,
   },
+  navTitleGroup: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: APP_SPACING.sm,
+  },
   navTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: APP_COLORS.neutral950,
   },
-  placeholder: {
-    width: 32,
+  navSubtitle: {
+    fontSize: 12,
+    color: APP_COLORS.neutral500,
+    marginTop: 1,
+  },
+  navPlaceholder: {
+    width: 34,
   },
   pressed: {
     opacity: 0.7,
@@ -224,10 +405,28 @@ const styles = StyleSheet.create({
     padding: APP_SPACING.xl,
     paddingBottom: APP_SPACING.xxxl * 2,
   },
+  closedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.finishedSoft,
+    borderColor: APP_COLORS.neutral300,
+    borderWidth: 1,
+    padding: APP_SPACING.md,
+    borderRadius: APP_RADIUS.md,
+    marginBottom: APP_SPACING.lg,
+    gap: 8,
+  },
+  closedBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    color: APP_COLORS.neutral950,
+  },
   summaryCard: {
     marginBottom: APP_SPACING.xl,
+    padding: APP_SPACING.xl,
   },
-  summaryTop: {
+  summaryTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -237,22 +436,59 @@ const styles = StyleSheet.create({
     marginRight: APP_SPACING.sm,
   },
   courseTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: APP_COLORS.neutral950,
   },
   classSubtitle: {
     fontSize: 14,
-    color: APP_COLORS.neutral700,
+    fontWeight: '600',
+    color: APP_COLORS.primary,
     marginTop: 2,
   },
-  timeSubtitle: {
+  scheduleInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  scheduleInfoText: {
     fontSize: 12,
     color: APP_COLORS.neutral500,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: APP_SPACING.sm,
+    marginTop: APP_SPACING.lg,
+    marginBottom: APP_SPACING.md,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: APP_COLORS.neutral100,
+    borderRadius: APP_RADIUS.md,
+    paddingVertical: APP_SPACING.sm,
+    paddingHorizontal: APP_SPACING.xs,
+    alignItems: 'center',
+  },
+  statBoxPrimary: {
+    backgroundColor: APP_COLORS.primary50,
+    borderColor: APP_COLORS.primary100,
+    borderWidth: 1,
+  },
+  statBoxNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: APP_COLORS.neutral950,
+  },
+  statBoxLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.neutral500,
     marginTop: 2,
+    textAlign: 'center',
   },
   progressContainer: {
-    marginTop: APP_SPACING.lg,
+    marginTop: APP_SPACING.sm,
     paddingTop: APP_SPACING.md,
     borderTopWidth: 1,
     borderTopColor: APP_COLORS.neutral200,
@@ -268,11 +504,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: APP_COLORS.neutral500,
   },
-  progressStats: {
+  progressPercentage: {
     fontSize: 13,
-    color: APP_COLORS.neutral700,
-  },
-  progressHighlight: {
     fontWeight: '700',
     color: APP_COLORS.primary,
   },
@@ -290,17 +523,101 @@ const styles = StyleSheet.create({
   closeActionContainer: {
     marginTop: APP_SPACING.lg,
   },
+  finishedNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.neutral100,
+    borderRadius: APP_RADIUS.md,
+    padding: APP_SPACING.sm,
+    marginTop: APP_SPACING.md,
+    gap: 6,
+  },
+  finishedNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    color: APP_COLORS.neutral500,
+    lineHeight: 16,
+  },
   listSection: {
-    marginTop: APP_SPACING.sm,
+    marginTop: APP_SPACING.xs,
+  },
+  listHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: APP_SPACING.md,
   },
   listSectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: APP_COLORS.neutral950,
+  },
+  countBadge: {
+    backgroundColor: APP_COLORS.neutral100,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: APP_RADIUS.pill,
+  },
+  countBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: APP_COLORS.neutral700,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.white,
+    borderColor: APP_COLORS.neutral200,
+    borderWidth: 1,
+    borderRadius: APP_RADIUS.md,
+    paddingHorizontal: APP_SPACING.md,
     marginBottom: APP_SPACING.md,
+    height: 42,
+  },
+  searchIcon: {
+    marginRight: APP_SPACING.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: APP_COLORS.neutral950,
+    padding: 0,
+  },
+  searchClearBtn: {
+    padding: 4,
   },
   emptyCard: {
     padding: 0,
+  },
+  emptySearchCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: APP_SPACING.xxl,
+    paddingHorizontal: APP_SPACING.lg,
+  },
+  emptySearchTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: APP_COLORS.neutral950,
+    marginTop: APP_SPACING.sm,
+  },
+  emptySearchDesc: {
+    fontSize: 13,
+    color: APP_COLORS.neutral500,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  resetSearchBtn: {
+    marginTop: APP_SPACING.md,
+    paddingVertical: 6,
+    paddingHorizontal: APP_SPACING.md,
+    backgroundColor: APP_COLORS.primary50,
+    borderRadius: APP_RADIUS.sm,
+  },
+  resetSearchText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: APP_COLORS.primary,
   },
   attendeeCard: {
     marginBottom: APP_SPACING.sm,
@@ -311,17 +628,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   indexCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: APP_COLORS.neutral100,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: APP_SPACING.md,
   },
   indexNumber: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: APP_COLORS.neutral700,
   },
   attendeeDetails: {
@@ -332,13 +649,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: APP_COLORS.neutral950,
   },
+  nimRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
   attendeeNim: {
     fontSize: 12,
     color: APP_COLORS.neutral500,
-    marginTop: 2,
   },
   attendeeTimeCol: {
     alignItems: 'flex-end',
+    gap: 4,
   },
   statusPill: {
     flexDirection: 'row',
@@ -354,12 +677,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: APP_COLORS.opened,
   },
+  timestampRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
   timestampText: {
     fontSize: 11,
     color: APP_COLORS.neutral500,
-    marginTop: 4,
   },
 });
 
 export default SessionRecapScreen;
-
