@@ -9,28 +9,28 @@
  * Follows DSG.md Section 10, 15, 16, 18, 23, 25
  */
 
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
-  Modal,
-  TouchableWithoutFeedback,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useApp, AttendanceResult } from '@/context/AppContext';
 import { Card } from '@/components/Card';
-import { StatusBadge } from '@/components/StatusBadge';
 import { CustomButton } from '@/components/CustomButton';
-import { NavigationProp } from '@/navigation/navigationTypes';
+import { StatusBadge } from '@/components/StatusBadge';
 import {
   APP_COLORS,
   APP_RADIUS,
-  APP_SPACING,
   APP_SHADOWS,
+  APP_SPACING,
 } from '@/constants/theme';
+import { AttendanceResult, useApp } from '@/context/AppContext';
+import { NavigationProp } from '@/navigation/navigationTypes';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import {
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
 
 interface StudentHomeScreenProps {
   navigation: NavigationProp;
