@@ -1,10 +1,12 @@
 /**
  * SessionRecapScreen Component
- * Programmer: Fritz (Flow Asisten & Pengelolaan Sesi)
+ * Programmer: Fritz & Birela (Flow Asisten, Empty State & Polish UI)
  * SRS-AST-003: Tutup sesi praktikum saat sesi DIBUKA
  * SRS-AST-004: Modal konfirmasi sebelum tutup sesi
  * SRS-AST-005: Rekap daftar praktikan yang sudah presensi + timestamp kehadiran
- * Follows DSG.md Section 17, 20, 21, 23
+ * SRS-UI-003: Empty State khusus pada rekap presensi jika belum ada yang hadir
+ * SRS-UI-005: Layouting Flexbox responsif dan styling terpoles
+ * Follows DSG.md Section 17, 20, 21, 23, 25
  */
 
 import React, { useState, useMemo } from 'react';
@@ -221,7 +223,7 @@ export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
           </Card>
         )}
 
-        {/* SRS-AST-005: Attendance List Section */}
+        {/* SRS-AST-005 & SRS-UI-003: Attendance List Section */}
         <View style={styles.listSection}>
           <View style={styles.listHeaderRow}>
             <Text style={styles.listSectionTitle}>Daftar Presensi Mahasiswa</Text>
@@ -263,34 +265,35 @@ export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
             </View>
           )}
 
-          {/* State 1: Belum ada praktikan sama sekali */}
+          {/* SRS-UI-003: Empty State Khusus Rekap Presensi Kosong */}
           {allAttendanceLogs.length === 0 ? (
             <Card style={styles.emptyCard}>
               <EmptyState
                 iconName="people-outline"
-                title="Belum Ada Presensi"
-                description="Belum ada praktikan yang mencatatkan kehadiran pada sesi ini. Data akan otomatis terupdate saat praktikan melakukan presensi."
+                iconColor={APP_COLORS.primary500}
+                iconBgColor={APP_COLORS.primary50}
+                badge="Rekap Masih Kosong"
+                title="Belum Ada Praktikan Presensi"
+                description="Belum ada mahasiswa yang mencatatkan kehadiran pada sesi praktikum ini. Data presensi akan muncul secara otomatis dan realtime begitu mahasiswa menekan tombol presensi."
+                hint={
+                  currentSchedule?.status === 'DIBUKA'
+                    ? 'Sesi sedang aktif dibuka. Mahasiswa dapat presensi sekarang.'
+                    : 'Sesi saat ini belum dibuka. Buka sesi terlebih dahulu agar mahasiswa dapat presensi.'
+                }
               />
             </Card>
           ) : filteredAttendanceLogs.length === 0 ? (
             /* State 2: Pencarian tidak menemukan hasil */
             <Card style={styles.emptySearchCard}>
-              <Ionicons
-                name="search-outline"
-                size={32}
-                color={APP_COLORS.neutral500}
+              <EmptyState
+                iconName="search-outline"
+                iconColor={APP_COLORS.neutral500}
+                iconBgColor={APP_COLORS.neutral100}
+                title="Mahasiswa Tidak Ditemukan"
+                description={`Tidak ada data kehadiran yang cocok dengan kata kunci "${searchQuery}".`}
+                actionTitle="Hapus Pencarian"
+                onActionPress={() => setSearchQuery('')}
               />
-              <Text style={styles.emptySearchTitle}>
-                Mahasiswa Tidak Ditemukan
-              </Text>
-              <Text style={styles.emptySearchDesc}>
-                Tidak ada data kehadiran yang cocok dengan kata kunci &quot;{searchQuery}&quot;.
-              </Text>
-              <Pressable
-                onPress={() => setSearchQuery('')}
-                style={styles.resetSearchBtn}>
-                <Text style={styles.resetSearchText}>Hapus Pencarian</Text>
-              </Pressable>
             </Card>
           ) : (
             /* State 3: Render daftar praktikan hadir dengan timestamp */
@@ -590,34 +593,7 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   emptySearchCard: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: APP_SPACING.xxl,
-    paddingHorizontal: APP_SPACING.lg,
-  },
-  emptySearchTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: APP_COLORS.neutral950,
-    marginTop: APP_SPACING.sm,
-  },
-  emptySearchDesc: {
-    fontSize: 13,
-    color: APP_COLORS.neutral500,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  resetSearchBtn: {
-    marginTop: APP_SPACING.md,
-    paddingVertical: 6,
-    paddingHorizontal: APP_SPACING.md,
-    backgroundColor: APP_COLORS.primary50,
-    borderRadius: APP_RADIUS.sm,
-  },
-  resetSearchText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: APP_COLORS.primary,
+    padding: 0,
   },
   attendeeCard: {
     marginBottom: APP_SPACING.sm,

@@ -2,6 +2,7 @@
  * AppNavigator Component
  * SRS-INF-001: Main entry navigator switching between AssistantStack and StudentStack based on active role
  * SRS-UI-001: Includes HeaderRolePicker for instant role toggling
+ * SRS-UI-005: Responsive Flexbox layout supporting mobile, tablet, and web
  */
 
 import React from 'react';
@@ -35,9 +36,12 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: APP_COLORS.white,
+    alignItems: 'center',
   },
   container: {
     flex: 1,
+    width: '100%',
+    maxWidth: 800,
     backgroundColor: APP_COLORS.neutral50,
   },
   content: {
@@ -46,4 +50,3 @@ const styles = StyleSheet.create({
 });
 
 export default AppNavigator;
-

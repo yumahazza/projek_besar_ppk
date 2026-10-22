@@ -1,6 +1,7 @@
 /**
  * StudentStack Component
  * SRS-INF-001: Navigation stack for Student screens (StudentHome <-> StudentHistory)
+ * SRS-UI-005: Responsive screen switching with param passing
  */
 
 import React, { useState } from 'react';
@@ -11,15 +12,19 @@ import { NavigationProp, StudentScreenName } from '@/navigation/navigationTypes'
 
 export const StudentStack: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<StudentScreenName>('StudentHome');
+  const [screenParams, setScreenParams] = useState<any>(undefined);
 
   const navigation: NavigationProp = {
     currentScreen,
-    navigate: (screen: string) => {
+    params: screenParams,
+    navigate: (screen: string, params?: any) => {
       if (screen === 'StudentHistory' || screen === 'StudentHome') {
+        setScreenParams(params);
         setCurrentScreen(screen as StudentScreenName);
       }
     },
     goBack: () => {
+      setScreenParams(undefined);
       setCurrentScreen('StudentHome');
     },
   };
@@ -43,4 +48,3 @@ const styles = StyleSheet.create({
 });
 
 export default StudentStack;
-

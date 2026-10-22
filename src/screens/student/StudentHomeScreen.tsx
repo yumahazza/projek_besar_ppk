@@ -1,36 +1,38 @@
 /**
  * StudentHomeScreen Component
- * Programmer: Hanna (Flow Praktikan & Form Presensi)
+ * Programmer: Hanna & Birela (Flow Praktikan, Form Presensi, Disabled/Empty State & Polish UI)
  * SRS-STU-001: Melihat jadwal praktikum beserta respons status sesi (BELUM DIBUKA, DIBUKA, SELESAI)
  * SRS-STU-002: Presensi kehadiran melalui tombol "Presensi Sekarang" saat sesi DIBUKA
  * SRS-STU-003: Feedback Modal / Toast menampilkan waktu kehadiran (timestamp) setelah presensi berhasil
  * SRS-VAL-001: Tombol presensi dinonaktifkan (disabled) saat sesi BELUM DIBUKA atau SELESAI
  * SRS-VAL-002: Validasi pencegahan presensi ganda untuk mahasiswa yang sama
- * Follows DSG.md Section 10, 15, 16, 18, 23, 25
+ * SRS-UI-004: Tampilan penjelasan (Empty/Disabled State View) saat sesi belum buka atau tutup
+ * SRS-UI-005: Responsive Flexbox Layout & Polished UI
+ * Follows DSG.md Section 10, 15, 16, 18, 21, 23, 25
  */
 
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  SafeAreaView,
+  Modal,
+  TouchableWithoutFeedback,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useApp, AttendanceResult } from '@/context/AppContext';
 import { Card } from '@/components/Card';
-import { CustomButton } from '@/components/CustomButton';
 import { StatusBadge } from '@/components/StatusBadge';
+import { CustomButton } from '@/components/CustomButton';
+import { NavigationProp } from '@/navigation/navigationTypes';
 import {
   APP_COLORS,
   APP_RADIUS,
-  APP_SHADOWS,
   APP_SPACING,
+  APP_SHADOWS,
 } from '@/constants/theme';
-import { AttendanceResult, useApp } from '@/context/AppContext';
-import { NavigationProp } from '@/navigation/navigationTypes';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import {
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
 
 interface StudentHomeScreenProps {
   navigation: NavigationProp;
@@ -180,7 +182,7 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
               </Text>
             </View>
 
-            {/* SRS-STU-002, SRS-VAL-001, SRS-VAL-002: Dynamic Attendance CTA Section */}
+            {/* SRS-STU-002, SRS-VAL-001, SRS-VAL-002, SRS-UI-004: Dynamic Attendance CTA Section */}
             <View style={styles.ctaContainer}>
               {/* KASUS A: SUDAH PRESENSI (SRS-VAL-002: Validasi Presensi Ganda) */}
               {isAttended ? (
@@ -240,8 +242,25 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                   </Text>
                 </View>
               ) : currentSchedule.status === 'BELUM_DIBUKA' ? (
-                /* KASUS C: SESI BELUM DIBUKA (SRS-VAL-001) */
-                <View>
+                /* KASUS C: SESI BELUM DIBUKA (SRS-VAL-001 & SRS-UI-004) */
+                <View style={styles.disabledStateView}>
+                  <View style={styles.disabledIconRow}>
+                    <View style={styles.iconCircleWarning}>
+                      <Ionicons
+                        name="time-outline"
+                        size={18}
+                        color={APP_COLORS.notOpened}
+                      />
+                    </View>
+                    <View style={styles.disabledTextGroup}>
+                      <Text style={styles.disabledStateTitle}>
+                        Presensi Belum Dibuka
+                      </Text>
+                      <Text style={styles.disabledStateSubtitle}>
+                        Sesi akan aktif setelah asisten membuka praktikum.
+                      </Text>
+                    </View>
+                  </View>
                   <CustomButton
                     title="Presensi Belum Dibuka"
                     variant="outline"
@@ -249,20 +268,27 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                     size="lg"
                     onPress={() => {}}
                   />
-                  <View style={styles.explanatoryBox}>
-                    <Ionicons
-                      name="information-circle-outline"
-                      size={16}
-                      color={APP_COLORS.notOpened}
-                    />
-                    <Text style={styles.explanatoryText}>
-                      Sesi praktikum belum dibuka oleh asisten. Tombol presensi akan aktif otomatis saat sesi dibuka.
-                    </Text>
-                  </View>
                 </View>
               ) : (
-                /* KASUS D: SESI TELAH SELESAI / TUTUP (SRS-VAL-001) */
-                <View>
+                /* KASUS D: SESI TELAH SELESAI / TUTUP (SRS-VAL-001 & SRS-UI-004) */
+                <View style={styles.disabledStateView}>
+                  <View style={styles.disabledIconRow}>
+                    <View style={styles.iconCircleFinished}>
+                      <Ionicons
+                        name="lock-closed"
+                        size={18}
+                        color={APP_COLORS.finished}
+                      />
+                    </View>
+                    <View style={styles.disabledTextGroup}>
+                      <Text style={styles.disabledStateTitle}>
+                        Sesi Telah Ditutup
+                      </Text>
+                      <Text style={styles.disabledStateSubtitle}>
+                        Presensi untuk sesi praktikum ini sudah berakhir.
+                      </Text>
+                    </View>
+                  </View>
                   <CustomButton
                     title="Sesi Telah Ditutup"
                     variant="outline"
@@ -270,16 +296,6 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                     size="lg"
                     onPress={() => {}}
                   />
-                  <View style={styles.explanatoryBox}>
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={16}
-                      color={APP_COLORS.neutral500}
-                    />
-                    <Text style={styles.explanatoryText}>
-                      Sesi praktikum telah ditutup oleh asisten. Presensi untuk sesi ini sudah berakhir.
-                    </Text>
-                  </View>
                 </View>
               )}
             </View>
@@ -711,20 +727,48 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  explanatoryBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  disabledStateView: {
     backgroundColor: APP_COLORS.neutral100,
-    padding: APP_SPACING.md,
+    borderColor: APP_COLORS.neutral200,
+    borderWidth: 1,
     borderRadius: APP_RADIUS.md,
-    marginTop: APP_SPACING.sm,
-    gap: 8,
+    padding: APP_SPACING.md,
   },
-  explanatoryText: {
+  disabledIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: APP_SPACING.sm,
+    marginBottom: APP_SPACING.md,
+  },
+  iconCircleWarning: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: APP_COLORS.notOpenedSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircleFinished: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: APP_COLORS.finishedSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledTextGroup: {
     flex: 1,
+  },
+  disabledStateTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: APP_COLORS.neutral950,
+  },
+  disabledStateSubtitle: {
     fontSize: 12,
-    color: APP_COLORS.neutral700,
-    lineHeight: 18,
+    color: APP_COLORS.neutral500,
+    marginTop: 2,
+    lineHeight: 16,
   },
   scheduleListSection: {
     marginBottom: APP_SPACING.lg,
