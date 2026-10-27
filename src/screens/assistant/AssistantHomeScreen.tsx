@@ -15,9 +15,10 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
+
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
 import { Card } from '@/components/Card';
@@ -291,7 +292,7 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
               {/* SRS-AST-002: Buka Sesi saat BELUM_DIBUKA */}
               {currentSchedule.status === 'BELUM_DIBUKA' && (
                 <CustomButton
-                  title="Buka Sesi Praktikum"
+                  title="Buka Sesi"
                   variant="primary"
                   size="lg"
                   leftIcon={
@@ -333,7 +334,7 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
                     }
                   />
                   <CustomButton
-                    title="Tutup Sesi Praktikum"
+                    title="Tutup Sesi"
                     variant="danger"
                     size="md"
                     leftIcon={
@@ -362,7 +363,7 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
                     </Text>
                   </View>
                   <CustomButton
-                    title="Lihat Rekap Presensi Final"
+                    title="Lihat Rekap Presensi"
                     variant="secondary"
                     size="md"
                     leftIcon={
@@ -471,13 +472,13 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
         visible={confirmModal.visible}
         title={
           confirmModal.action === 'open'
-            ? 'Buka Sesi Praktikum?'
-            : 'Tutup Sesi Praktikum?'
+            ? 'Buka Sesi?'
+            : 'Tutup Sesi?'
         }
         subtitle={
           confirmModal.action === 'open'
-            ? 'Praktikan akan dapat melakukan presensi setelah sesi dibuka. Pastikan jadwal dan ruangan sudah sesuai.'
-            : 'Setelah sesi ditutup, praktikan tidak akan dapat melakukan presensi lagi pada sesi ini.'
+            ? 'Praktikan akan dapat melakukan presensi setelah sesi dibuka.'
+            : 'Setelah sesi ditutup, praktikan tidak dapat melakukan presensi lagi.'
         }
         details={{
           courseName: targetScheduleForModal?.courseName,
@@ -486,7 +487,7 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
           room: targetScheduleForModal?.room,
         }}
         confirmText={
-          confirmModal.action === 'open' ? 'Ya, Buka Sesi' : 'Tutup Sesi'
+          confirmModal.action === 'open' ? 'Ya, Buka' : 'Tutup Sesi'
         }
         cancelText="Batal"
         confirmVariant={confirmModal.action === 'open' ? 'primary' : 'danger'}

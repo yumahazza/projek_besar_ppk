@@ -15,10 +15,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
+
   Pressable,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
 import { Card } from '@/components/Card';
@@ -193,7 +194,7 @@ export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
             {currentSchedule.status === 'DIBUKA' && (
               <View style={styles.closeActionContainer}>
                 <CustomButton
-                  title="Tutup Sesi Praktikum Sekarang"
+                  title="Tutup Sesi"
                   variant="danger"
                   size="md"
                   leftIcon={
@@ -347,8 +348,8 @@ export const SessionRecapScreen: React.FC<SessionRecapScreenProps> = ({
       {/* SRS-AST-004: Modal Konfirmasi Tutup Sesi */}
       <ConfirmModal
         visible={closeModalVisible}
-        title="Tutup Sesi Praktikum?"
-        subtitle="Setelah sesi ditutup, status akan berubah menjadi SELESAI dan praktikan tidak dapat melakukan presensi lagi."
+        title="Tutup Sesi?"
+        subtitle="Setelah sesi ditutup, praktikan tidak dapat melakukan presensi lagi."
         details={{
           courseName: currentSchedule?.courseName,
           className: currentSchedule?.className,
