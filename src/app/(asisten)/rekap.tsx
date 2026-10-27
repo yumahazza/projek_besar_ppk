@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   View,
@@ -7,20 +8,26 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { usePracticum } from '@/context/PracticumContext';
+import { useApp } from '@/context/AppContext';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 import { StatusBadge } from '@/components/StatusBadge';
 import { EmptyState } from '@/components/EmptyState';
-import { Colors, BorderRadius, Spacing } from '@/constants/theme';
+import { APP_COLORS, APP_RADIUS, APP_SPACING } from '@/constants/theme';
 
 export default function AsistenRekapScreen() {
-  const { sessions, getSessionAttendance } = usePracticum();
+  const { schedules, getAttendanceForSchedule } = useApp();
+
   const [selectedSessionId, setSelectedSessionId] = useState<string>(
-    sessions[0]?.id || ''
+    schedules[0]?.id || ''
   );
 
-  const currentSession = sessions.find((s) => s.id === selectedSessionId) || sessions[0];
-  const attendanceList = currentSession ? getSessionAttendance(currentSession.id) : [];
+  const currentSession =
+    schedules.find((schedule) => schedule.id === selectedSessionId) ||
+    schedules[0];
+
+  const attendanceList = currentSession
+    ? getAttendanceForSchedule(currentSession.id)
+    : [];
 
   return (
     <ResponsiveContainer>
@@ -37,7 +44,7 @@ export default function AsistenRekapScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabScroll}>
-          {sessions.map((session) => {
+          {schedules.map((session) => {
             const isSelected = (currentSession?.id || '') === session.id;
             return (
               <TouchableOpacity
@@ -50,7 +57,7 @@ export default function AsistenRekapScreen() {
                     styles.sessionTabText,
                     isSelected && styles.sessionTabTextActive,
                   ]}>
-                  {session.name} ({session.classId})
+                  {session.courseName} ({session.className})
                 </Text>
               </TouchableOpacity>
             );
@@ -67,13 +74,14 @@ export default function AsistenRekapScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryTopRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.sessionTitle}>{currentSession.name}</Text>
+                  <Text style={styles.sessionTitle}>
+                    {currentSession.courseName}
+                  </Text>
                   <Text style={styles.sessionMeta}>
-                    {currentSession.classId} • {currentSession.room}
+                    {currentSession.className} • {currentSession.room}
                   </Text>
                   <Text style={styles.sessionTime}>
-                    {currentSession.date} • {currentSession.startTime} –{' '}
-                    {currentSession.endTime} WIB
+                    {currentSession.date} • {currentSession.time}
                   </Text>
                 </View>
                 <StatusBadge status={currentSession.status} size="sm" />
@@ -90,13 +98,19 @@ export default function AsistenRekapScreen() {
                   </Text>
                 </View>
                 <View style={styles.statBadge}>
-                  <Ionicons name="people" size={18} color={Colors.primary} />
+                  <Ionicons
+                    name="people"
+                    size={18}
+                    color={APP_COLORS.primary}
+                  />
                 </View>
               </View>
             </View>
 
             {/* Attendance List Title */}
-            <Text style={styles.listSectionTitle}>Daftar Mahasiswa Hadir</Text>
+            <Text style={styles.listSectionTitle}>
+              Daftar Mahasiswa Hadir
+            </Text>
 
             {attendanceList.length === 0 ? (
               <EmptyState
@@ -113,13 +127,17 @@ export default function AsistenRekapScreen() {
                         <Text style={styles.indexText}>{index + 1}</Text>
                       </View>
                       <View>
-                        <Text style={styles.studentName}>{record.studentName}</Text>
-                        <Text style={styles.studentNim}>NIM: {record.studentNim}</Text>
+                        <Text style={styles.studentName}>
+                          {record.studentName}
+                        </Text>
+                        <Text style={styles.studentNim}>
+                          NIM: {record.nim}
+                        </Text>
                         <View style={styles.timestampRow}>
                           <Ionicons
                             name="time-outline"
                             size={12}
-                            color={Colors.textSecondary}
+                            color={APP_COLORS.neutral500}
                           />
                           <Text style={styles.timestampText}>
                             Presensi: {record.timestamp}
@@ -132,7 +150,7 @@ export default function AsistenRekapScreen() {
                       <Ionicons
                         name="checkmark-circle"
                         size={14}
-                        color={Colors.success}
+                        color={APP_COLORS.opened}
                       />
                       <Text style={styles.presentText}>Hadir</Text>
                     </View>
@@ -154,60 +172,60 @@ export default function AsistenRekapScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: APP_SPACING.lg,
+    paddingTop: APP_SPACING.lg,
+    paddingBottom: APP_SPACING.sm,
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
   },
   subtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     marginTop: 2,
   },
   tabContainer: {
-    paddingVertical: Spacing.md,
+    paddingVertical: APP_SPACING.md,
   },
   tabScroll: {
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm,
+    paddingHorizontal: APP_SPACING.lg,
+    gap: APP_SPACING.sm,
   },
   sessionTab: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: APP_SPACING.md,
     paddingVertical: 7,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
+    borderRadius: APP_RADIUS.pill,
+    backgroundColor: APP_COLORS.white,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: APP_COLORS.neutral200,
   },
   sessionTabActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: APP_COLORS.primary,
+    borderColor: APP_COLORS.primary,
   },
   sessionTabText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
   },
   sessionTabTextActive: {
     color: '#FFFFFF',
   },
   scrollContent: {
-    padding: Spacing.lg,
-    paddingTop: Spacing.xs,
-    paddingBottom: Spacing.xxl,
+    padding: APP_SPACING.lg,
+    paddingTop: APP_SPACING.xs,
+    paddingBottom: APP_SPACING.xxl,
   },
   summaryCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    backgroundColor: APP_COLORS.white,
+    borderRadius: APP_RADIUS.lg,
+    padding: APP_SPACING.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.xl,
-    shadowColor: Colors.cardShadow,
+    borderColor: APP_COLORS.neutral200,
+    marginBottom: APP_SPACING.xl,
+    shadowColor: APP_COLORS.neutral950,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
@@ -221,22 +239,22 @@ const styles = StyleSheet.create({
   sessionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
     marginBottom: 2,
   },
   sessionMeta: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     marginBottom: 4,
   },
   sessionTime: {
     fontSize: 12,
-    color: Colors.textMuted,
+    color: APP_COLORS.neutral500,
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: Spacing.md,
+    backgroundColor: APP_COLORS.neutral100,
+    marginVertical: APP_SPACING.md,
   },
   recapStatRow: {
     flexDirection: 'row',
@@ -246,73 +264,73 @@ const styles = StyleSheet.create({
   statBox: {},
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     marginBottom: 2,
   },
   statValue: {
     fontSize: 20,
     fontWeight: '800',
-    color: Colors.primary,
+    color: APP_COLORS.primary,
   },
   statUnit: {
     fontSize: 13,
     fontWeight: '500',
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
   },
   statBadge: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: APP_COLORS.primary100,
     justifyContent: 'center',
     alignItems: 'center',
   },
   listSectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+    color: APP_COLORS.neutral950,
+    marginBottom: APP_SPACING.md,
   },
   listContainer: {
-    gap: Spacing.sm,
+    gap: APP_SPACING.sm,
   },
   studentCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.surface,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
+    backgroundColor: APP_COLORS.white,
+    padding: APP_SPACING.md,
+    borderRadius: APP_RADIUS.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: APP_COLORS.neutral200,
   },
   studentLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: APP_SPACING.md,
     flex: 1,
   },
   indexCircle: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.borderLight,
+    backgroundColor: APP_COLORS.neutral100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   indexText: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
   },
   studentName: {
     fontSize: 14,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
   },
   studentNim: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     marginTop: 1,
   },
   timestampRow: {
@@ -323,20 +341,20 @@ const styles = StyleSheet.create({
   },
   timestampText: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
   },
   presentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.successLight,
-    paddingHorizontal: Spacing.sm,
+    backgroundColor: APP_COLORS.openedSoft,
+    paddingHorizontal: APP_SPACING.sm,
     paddingVertical: 3,
-    borderRadius: BorderRadius.sm,
+    borderRadius: APP_RADIUS.sm,
   },
   presentText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.success,
+    color: APP_COLORS.opened,
   },
 });

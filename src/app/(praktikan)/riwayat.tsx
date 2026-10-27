@@ -6,21 +6,72 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { usePracticum } from '@/context/PracticumContext';
+import { useApp } from '@/context/AppContext';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 import { EmptyState } from '@/components/EmptyState';
-import { Colors, BorderRadius, Spacing } from '@/constants/theme';
+import { APP_COLORS, APP_RADIUS, APP_SPACING } from '@/constants/theme';
+
+const MONTHS: Record<string, number> = {
+  Jan: 0,
+  Feb: 1,
+  Mar: 2,
+  Apr: 3,
+  Mei: 4,
+  Jun: 5,
+  Jul: 6,
+  Agu: 7,
+  Sep: 8,
+  Okt: 9,
+  Nov: 10,
+  Des: 11,
+};
+
+// Mengubah tanggal dan waktu presensi menjadi angka untuk pengurutan.
+function getAttendanceDateTime(date: string, timestamp: string): number {
+  const [dayText, monthText, yearText] = date.split(' ');
+  const day = Number(dayText);
+  const month = MONTHS[monthText];
+  const year = Number(yearText);
+
+  const [timeText] = timestamp.split(' WIB');
+  const [hoursText, minutesText, secondsText] = timeText.split(':');
+
+  const hours = Number(hoursText);
+  const minutes = Number(minutesText);
+  const seconds = Number(secondsText);
+
+  if (
+    !Number.isInteger(day) ||
+    month === undefined ||
+    !Number.isInteger(year) ||
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    !Number.isInteger(seconds)
+  ) {
+    return 0;
+  }
+
+  return new Date(
+    year,
+    month,
+    day,
+    hours,
+    minutes,
+    seconds
+  ).getTime();
+}
 
 export default function PraktikanRiwayatScreen() {
-  const { currentUser, getStudentAttendance, getSessionById } = usePracticum();
+  const { activeUser, getStudentHistory } = useApp();
 
-  // Tampilkan presensi terbaru di bagian paling atas.
-  const studentAttendance = currentUser
-    ? [...getStudentAttendance(currentUser.id)].sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      })
+  // kamus lokal
+  // Ambil riwayat praktikan yang sedang aktif.
+  const studentAttendance = activeUser
+    ? [...getStudentHistory(activeUser.id)].sort(
+        (a, b) =>
+          getAttendanceDateTime(b.date, b.timestamp) -
+          getAttendanceDateTime(a.date, a.timestamp)
+      )
     : [];
 
   return (
@@ -28,13 +79,14 @@ export default function PraktikanRiwayatScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Riwayat Kehadiran</Text>
         <Text style={styles.subtitle}>
-          Catatan presensi pribadi untuk {currentUser?.name || 'Praktikan'}
+          Catatan presensi pribadi untuk {activeUser?.name || 'Praktikan'}
         </Text>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         {studentAttendance.length === 0 ? (
           <EmptyState
             icon="calendar-outline"
@@ -44,7 +96,7 @@ export default function PraktikanRiwayatScreen() {
         ) : (
           <View style={styles.listContainer}>
             {studentAttendance.map((record) => {
-              const session = getSessionById(record.sessionId);
+              const session = record.schedule;
 
               return (
                 <View key={record.id} style={styles.recordCard}>
@@ -53,32 +105,39 @@ export default function PraktikanRiwayatScreen() {
                       <Ionicons
                         name="checkmark-circle"
                         size={22}
-                        color={Colors.success}
+                        color={APP_COLORS.opened}
                       />
                     </View>
+
                     <View style={styles.recordInfo}>
                       <Text style={styles.sessionName} numberOfLines={2}>
-                        {session?.name || 'Sesi Praktikum'}
+                        {session?.courseName || 'Sesi Praktikum'}
                       </Text>
+
                       <Text style={styles.classText} numberOfLines={1}>
-                        {session?.classId || 'Kelas'} • {session?.room || 'Lab'}
+                        {session?.className || 'Kelas'} | {session?.room || 'Lab'}
                       </Text>
+
                       <View style={styles.metaRow}>
                         <Ionicons
                           name="calendar-outline"
                           size={12}
-                          color={Colors.textSecondary}
+                          color={APP_COLORS.neutral500}
                         />
                         <Text style={styles.metaText}>
-                          {session?.date || 'Hari ini'}
+                          {record.date || 'Tanggal tidak tersedia'}
                         </Text>
-                        <Text style={styles.metaDot}>•</Text>
+
+                        <Text style={styles.metaDot}>|</Text>
+
                         <Ionicons
                           name="time-outline"
                           size={12}
-                          color={Colors.textSecondary}
+                          color={APP_COLORS.neutral500}
                         />
-                        <Text style={styles.metaText}>{record.timestamp}</Text>
+                        <Text style={styles.metaText}>
+                          {record.timestamp}
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -98,38 +157,38 @@ export default function PraktikanRiwayatScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: APP_SPACING.lg,
+    paddingTop: APP_SPACING.lg,
+    paddingBottom: APP_SPACING.sm,
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
   },
   subtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     marginTop: 2,
   },
   scrollContent: {
-    padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
+    padding: APP_SPACING.lg,
+    paddingBottom: APP_SPACING.xxl,
   },
   listContainer: {
-    gap: Spacing.sm,
+    gap: APP_SPACING.sm,
   },
   recordCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.sm,
-    backgroundColor: Colors.surface,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
+    gap: APP_SPACING.sm,
+    backgroundColor: APP_COLORS.white,
+    padding: APP_SPACING.lg,
+    borderRadius: APP_RADIUS.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.cardShadow,
+    borderColor: APP_COLORS.neutral200,
+    shadowColor: APP_COLORS.neutral950,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.6,
     shadowRadius: 3,
@@ -138,14 +197,14 @@ const styles = StyleSheet.create({
   recordLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: APP_SPACING.md,
     flex: 1,
   },
   checkCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.successLight,
+    backgroundColor: APP_COLORS.openedSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -155,12 +214,12 @@ const styles = StyleSheet.create({
   sessionName: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
     marginBottom: 2,
   },
   classText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     marginBottom: 4,
   },
   metaRow: {
@@ -170,25 +229,25 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
   },
   metaDot: {
     fontSize: 11,
-    color: Colors.textMuted,
+    color: APP_COLORS.neutral500,
   },
   statusBadge: {
     alignSelf: 'center',
     flexShrink: 0,
-    backgroundColor: Colors.successLight,
-    paddingHorizontal: Spacing.md,
+    backgroundColor: APP_COLORS.openedSoft,
+    paddingHorizontal: APP_SPACING.md,
     paddingVertical: 4,
-    borderRadius: BorderRadius.full,
+    borderRadius: APP_RADIUS.pill,
     borderWidth: 1,
     borderColor: '#A7F3D0',
   },
   statusText: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.success,
+    color: APP_COLORS.opened,
   },
 });

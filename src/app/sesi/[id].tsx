@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -8,38 +9,33 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { usePracticum } from '@/context/PracticumContext';
+import { useApp } from '@/context/AppContext';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ConfirmationModal } from '@/components/ConfirmationModal';
-import { SuccessModal } from '@/components/SuccessModal';
 import { EmptyState } from '@/components/EmptyState';
-import { Colors, BorderRadius, Spacing } from '@/constants/theme';
+import { APP_COLORS, APP_RADIUS, APP_SPACING } from '@/constants/theme';
 
 export default function SessionDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+
   const {
-    currentUser,
-    getSessionById,
+    activeUser,
+    schedules,
     openSession,
     closeSession,
     submitAttendance,
-    hasStudentAttended,
-    getSessionAttendance,
-  } = usePracticum();
+    getStudentAttendanceForSchedule,
+    getAttendanceForSchedule,
+  } = useApp();
 
-  const session = getSessionById(id || '');
+  const session = schedules.find((item) => item.id === id);
 
-  // Modals state
-  const [confirmAttendanceVisible, setConfirmAttendanceVisible] = useState(false);
+  const [confirmAttendanceVisible, setConfirmAttendanceVisible] =
+    useState(false);
   const [confirmOpenVisible, setConfirmOpenVisible] = useState(false);
   const [confirmCloseVisible, setConfirmCloseVisible] = useState(false);
-  const [successInfo, setSuccessInfo] = useState<{ visible: boolean; title: string; message: string }>({
-    visible: false,
-    title: '',
-    message: '',
-  });
 
   if (!session) {
     return (
@@ -52,7 +48,8 @@ export default function SessionDetailScreen() {
           />
           <TouchableOpacity
             style={styles.backBtnFallback}
-            onPress={() => router.back()}>
+            onPress={() => router.back()}
+          >
             <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
             <Text style={styles.backBtnFallbackText}>Kembali</Text>
           </TouchableOpacity>
@@ -61,60 +58,54 @@ export default function SessionDetailScreen() {
     );
   }
 
-  const role = currentUser?.role || 'praktikan';
+  const role = activeUser?.role ?? 'student';
+
   const attendanceRecord =
-    currentUser && role === 'praktikan'
-      ? hasStudentAttended(session.id, currentUser.id)
+    activeUser && role === 'student'
+      ? getStudentAttendanceForSchedule(session.id, activeUser.id)
       : undefined;
 
-  const hasAttended = !!attendanceRecord;
-  const attendanceList = getSessionAttendance(session.id);
+  const hasAttended = Boolean(attendanceRecord);
+  const attendanceList = getAttendanceForSchedule(session.id);
 
-  // Student Attendance Handler
+  // Presensi praktikan
   const handleAttendanceSubmit = () => {
-    if (!currentUser || role !== 'praktikan') return;
+    if (!activeUser || role !== 'student') return;
+
     setConfirmAttendanceVisible(false);
 
-    const res = submitAttendance(session.id, currentUser.id);
-    if (res.success && res.record) {
-      setSuccessInfo({
-        visible: true,
-        title: 'Presensi Berhasil!',
-        message: `Anda berhasil melakukan presensi pada pukul ${res.record.timestamp}.`,
-      });
-    } else {
-      setSuccessInfo({
-        visible: true,
-        title: 'Presensi Gagal',
-        message: res.message,
-      });
-    }
+    const result = submitAttendance(session.id, activeUser);
+
+    Alert.alert(
+      result.success ? 'Presensi Berhasil!' : 'Presensi Gagal',
+      result.success
+        ? `Presensi berhasil dicatat pada pukul ${
+            result.record?.timestamp ?? result.timestamp ?? '-'
+          }.`
+        : result.message,
+    );
   };
 
-  // Assistant Open Session Handler
+  // Membuka sesi
   const handleConfirmOpen = () => {
     setConfirmOpenVisible(false);
-    const res = openSession(session.id);
-    if (res.success) {
-      setSuccessInfo({
-        visible: true,
-        title: 'Sesi Telah Dibuka',
-        message: res.message,
-      });
-    }
+    openSession(session.id);
+
+    Alert.alert(
+      'Sesi Telah Dibuka',
+      `Sesi ${session.courseName} berhasil dibuka.`,
+    );
   };
 
-  // Assistant Close Session Handler
+  // Menutup sesi
   const handleConfirmClose = () => {
     setConfirmCloseVisible(false);
-    const res = closeSession(session.id);
-    if (res.success) {
-      setSuccessInfo({
-        visible: true,
-        title: 'Sesi Telah Ditutup',
-        message: res.message,
-      });
-    }
+    closeSession(session.id);
+
+    Alert.alert(
+      'Sesi Telah Ditutup',
+      `Sesi ${session.courseName} berhasil ditutup.`,
+    );
   };
 
   return (
@@ -125,7 +116,11 @@ export default function SessionDetailScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+          <Ionicons
+            name="arrow-back"
+            size={22}
+            color={APP_COLORS.neutral950}
+          />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>Detail Sesi Praktikum</Text>
         <View style={{ width: 40 }} />
@@ -138,9 +133,9 @@ export default function SessionDetailScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.practicumName}>{session.name}</Text>
+              <Text style={styles.practicumName}>{session.courseName}</Text>
               <View style={styles.classBadge}>
-                <Text style={styles.classText}>{session.classId}</Text>
+                <Text style={styles.classText}>{session.className}</Text>
               </View>
             </View>
             <StatusBadge status={session.status} size="md" />
@@ -151,7 +146,11 @@ export default function SessionDetailScreen() {
           <View style={styles.detailList}>
             <View style={styles.detailItem}>
               <View style={styles.detailIconBox}>
-                <Ionicons name="calendar" size={16} color={Colors.primary} />
+                <Ionicons
+                  name="calendar"
+                  size={16}
+                  color={APP_COLORS.primary}
+                />
               </View>
               <View>
                 <Text style={styles.detailLabel}>Tanggal Pelaksanaan</Text>
@@ -161,19 +160,27 @@ export default function SessionDetailScreen() {
 
             <View style={styles.detailItem}>
               <View style={styles.detailIconBox}>
-                <Ionicons name="time" size={16} color={Colors.primary} />
+                <Ionicons
+                  name="time"
+                  size={16}
+                  color={APP_COLORS.primary}
+                />
               </View>
               <View>
                 <Text style={styles.detailLabel}>Waktu Praktikum</Text>
                 <Text style={styles.detailValue}>
-                  {session.startTime} – {session.endTime} WIB
+                  {session.time} WIB
                 </Text>
               </View>
             </View>
 
             <View style={styles.detailItem}>
               <View style={styles.detailIconBox}>
-                <Ionicons name="business" size={16} color={Colors.primary} />
+                <Ionicons
+                  name="business"
+                  size={16}
+                  color={APP_COLORS.primary}
+                />
               </View>
               <View>
                 <Text style={styles.detailLabel}>Ruangan Laboratorium</Text>
@@ -183,27 +190,41 @@ export default function SessionDetailScreen() {
 
             <View style={styles.detailItem}>
               <View style={styles.detailIconBox}>
-                <Ionicons name="person" size={16} color={Colors.primary} />
+                <Ionicons
+                  name="person"
+                  size={16}
+                  color={APP_COLORS.primary}
+                />
               </View>
               <View>
-                <Text style={styles.detailLabel}>Asisten Penanggung Jawab</Text>
-                <Text style={styles.detailValue}>{session.assistantName}</Text>
+                <Text style={styles.detailLabel}>
+                  Asisten Penanggung Jawab
+                </Text>
+                <Text style={styles.detailValue}>
+                  {session.assistantName}
+                </Text>
               </View>
             </View>
           </View>
         </View>
 
         {/* ROLE A: PRAKTIKAN VIEW */}
-        {role === 'praktikan' && (
+        {role === 'student' && (
           <View style={styles.attendanceCard}>
             <Text style={styles.sectionHeaderTitle}>Status Presensi Saya</Text>
 
             {hasAttended ? (
               <View style={styles.attendedStatusBox}>
                 <View style={styles.attendedIconCircle}>
-                  <Ionicons name="checkmark-circle" size={32} color={Colors.success} />
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={32}
+                    color={APP_COLORS.opened}
+                  />
                 </View>
-                <Text style={styles.attendedTitle}>Anda Sudah Melakukan Presensi</Text>
+                <Text style={styles.attendedTitle}>
+                  Anda Sudah Melakukan Presensi
+                </Text>
                 <Text style={styles.attendedTimestamp}>
                   Tercatat hadir pada pukul {attendanceRecord?.timestamp}
                 </Text>
@@ -211,31 +232,55 @@ export default function SessionDetailScreen() {
                 <TouchableOpacity
                   style={[styles.actionButton, styles.buttonDisabled]}
                   disabled={true}>
-                  <Ionicons name="checkmark-done" size={18} color="#FFFFFF" />
-                  <Text style={styles.actionButtonText}>Presensi Sudah Tercatat</Text>
+                  <Ionicons
+                    name="checkmark-done"
+                    size={18}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.actionButtonText}>
+                    Presensi Sudah Tercatat
+                  </Text>
                 </TouchableOpacity>
               </View>
-            ) : session.status === 'scheduled' ? (
+            ) : session.status === 'BELUM_DIBUKA' ? (
               <View style={styles.noticeBox}>
-                <Ionicons name="time-outline" size={24} color={Colors.status.scheduled.text} />
+                <Ionicons
+                  name="time-outline"
+                  size={24}
+                  color={APP_COLORS.notOpened}
+                />
                 <Text style={styles.noticeTitle}>Sesi Belum Dibuka</Text>
                 <Text style={styles.noticeDesc}>
-                  Asisten belum membuka sesi praktikum ini. Tombol presensi akan tersedia setelah sesi dibuka.
+                  Asisten belum membuka sesi praktikum ini. Tombol presensi
+                  akan tersedia setelah sesi dibuka.
                 </Text>
 
                 <TouchableOpacity
                   style={[styles.actionButton, styles.buttonDisabled]}
                   disabled={true}>
-                  <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
-                  <Text style={styles.actionButtonText}>Presensi Belum Tersedia</Text>
+                  <Ionicons
+                    name="lock-closed"
+                    size={18}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.actionButtonText}>
+                    Presensi Belum Tersedia
+                  </Text>
                 </TouchableOpacity>
               </View>
-            ) : session.status === 'open' ? (
+            ) : session.status === 'DIBUKA' ? (
               <View style={styles.openAttendanceBox}>
-                <Ionicons name="flash-outline" size={28} color={Colors.status.open.text} />
-                <Text style={styles.openAttendanceTitle}>Sesi Sedang Berlangsung!</Text>
+                <Ionicons
+                  name="flash-outline"
+                  size={28}
+                  color={APP_COLORS.opened}
+                />
+                <Text style={styles.openAttendanceTitle}>
+                  Sesi Sedang Berlangsung!
+                </Text>
                 <Text style={styles.openAttendanceDesc}>
-                  Presensi kehadiran dibuka. Tekan tombol di bawah untuk mencatat kehadiran Anda.
+                  Presensi kehadiran dibuka. Tekan tombol di bawah untuk
+                  mencatat kehadiran Anda.
                 </Text>
 
                 <TouchableOpacity
@@ -243,22 +288,31 @@ export default function SessionDetailScreen() {
                   onPress={() => setConfirmAttendanceVisible(true)}
                   activeOpacity={0.8}>
                   <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  <Text style={styles.actionButtonText}>Presensi Sekarang</Text>
+                  <Text style={styles.actionButtonText}>
+                    Presensi Sekarang
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.noticeBox}>
-                <Ionicons name="close-circle-outline" size={24} color={Colors.textMuted} />
+                <Ionicons
+                  name="close-circle-outline"
+                  size={24}
+                  color={APP_COLORS.neutral500}
+                />
                 <Text style={styles.noticeTitle}>Sesi Sudah Ditutup</Text>
                 <Text style={styles.noticeDesc}>
-                  Asisten telah menutup sesi praktikum ini. Presensi sudah tidak dapat dilakukan.
+                  Asisten telah menutup sesi praktikum ini. Presensi sudah
+                  tidak dapat dilakukan.
                 </Text>
 
                 <TouchableOpacity
                   style={[styles.actionButton, styles.buttonDisabled]}
                   disabled={true}>
                   <Ionicons name="ban" size={18} color="#FFFFFF" />
-                  <Text style={styles.actionButtonText}>Sesi Telah Ditutup</Text>
+                  <Text style={styles.actionButtonText}>
+                    Sesi Telah Ditutup
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -266,47 +320,60 @@ export default function SessionDetailScreen() {
         )}
 
         {/* ROLE B: ASISTEN VIEW */}
-        {role === 'asisten' && (
+        {role === 'assistant' && (
           <View>
             {/* Assistant Session Controls */}
             <View style={styles.card}>
-              <Text style={styles.sectionHeaderTitle}>Kontrol Sesi Asisten</Text>
+              <Text style={styles.sectionHeaderTitle}>
+                Kontrol Sesi Asisten
+              </Text>
 
-              {session.status === 'scheduled' && (
+              {session.status === 'BELUM_DIBUKA' && (
                 <View>
                   <Text style={styles.controlHint}>
-                    Sesi berstatus Belum Dibuka. Klik tombol di bawah untuk membuka sesi dan mengizinkan praktikan melakukan presensi.
+                    Sesi berstatus Belum Dibuka. Klik tombol di bawah untuk
+                    membuka sesi dan mengizinkan praktikan melakukan presensi.
                   </Text>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.buttonOpen]}
                     onPress={() => setConfirmOpenVisible(true)}
                     activeOpacity={0.8}>
                     <Ionicons name="play" size={18} color="#FFFFFF" />
-                    <Text style={styles.actionButtonText}>Buka Sesi Sekarang</Text>
+                    <Text style={styles.actionButtonText}>
+                      Buka Sesi Sekarang
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {session.status === 'open' && (
+              {session.status === 'DIBUKA' && (
                 <View>
                   <Text style={styles.controlHint}>
-                    Sesi sedang Berlangsung. Praktikan dapat melakukan presensi. Klik Tutup Sesi untuk mengakhiri presensi.
+                    Sesi sedang Berlangsung. Praktikan dapat melakukan
+                    presensi. Klik Tutup Sesi untuk mengakhiri presensi.
                   </Text>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.buttonClose]}
                     onPress={() => setConfirmCloseVisible(true)}
                     activeOpacity={0.8}>
                     <Ionicons name="stop" size={18} color="#FFFFFF" />
-                    <Text style={styles.actionButtonText}>Tutup Sesi Praktikum</Text>
+                    <Text style={styles.actionButtonText}>
+                      Tutup Sesi Praktikum
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {session.status === 'closed' && (
+              {session.status === 'SELESAI' && (
                 <View style={styles.closedNoticeBox}>
-                  <Ionicons name="checkmark-circle-outline" size={20} color={Colors.textSecondary} />
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={20}
+                    color={APP_COLORS.neutral500}
+                  />
                   <Text style={styles.closedNoticeText}>
-                    Sesi praktikum telah ditutup secara resmi. Tidak ada perubahan status lebih lanjut.
+                    Sesi praktikum telah ditutup secara resmi. Tidak ada
+                    perubahan status lebih lanjut.
                   </Text>
                 </View>
               )}
@@ -315,7 +382,9 @@ export default function SessionDetailScreen() {
             {/* Assistant Attendance Recap for this session */}
             <View style={styles.card}>
               <View style={styles.recapHeaderRow}>
-                <Text style={styles.sectionHeaderTitle}>Rekap Presensi Sesi</Text>
+                <Text style={styles.sectionHeaderTitle}>
+                  Rekap Presensi Sesi
+                </Text>
                 <View style={styles.countBadge}>
                   <Text style={styles.countBadgeText}>
                     {attendanceList.length} Hadir
@@ -334,14 +403,16 @@ export default function SessionDetailScreen() {
                   {attendanceList.map((record, index) => (
                     <View key={record.id} style={styles.recapItem}>
                       <View style={styles.recapIndexCircle}>
-                        <Text style={styles.recapIndexText}>{index + 1}</Text>
+                        <Text style={styles.recapIndexText}>
+                          {index + 1}
+                        </Text>
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.recapStudentName}>
                           {record.studentName}
                         </Text>
                         <Text style={styles.recapStudentNim}>
-                          NIM: {record.studentNim} • {record.timestamp}
+                          NIM: {record.nim} • {record.timestamp}
                         </Text>
                       </View>
                       <View style={styles.hadirPill}>
@@ -356,51 +427,40 @@ export default function SessionDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Confirmation Modal: Presensi Praktikan */}
-      <ConfirmationModal
+      {/* Konfirmasi presensi */}
+      <ConfirmModal
         visible={confirmAttendanceVisible}
         title="Konfirmasi Presensi"
-        message={`Apakah Anda yakin ingin melakukan presensi untuk sesi ${session.name}?`}
+        subtitle={`Apakah Anda yakin ingin melakukan presensi untuk sesi ${session.courseName}?`}
         confirmText="Ya, Presensi"
         cancelText="Batal"
         confirmVariant="primary"
-        icon="finger-print-outline"
         onConfirm={handleAttendanceSubmit}
         onCancel={() => setConfirmAttendanceVisible(false)}
       />
 
-      {/* Confirmation Modal: Buka Sesi Asisten */}
-      <ConfirmationModal
+      {/* Konfirmasi buka sesi */}
+      <ConfirmModal
         visible={confirmOpenVisible}
         title="Buka Sesi Praktikum"
-        message={`Apakah Anda yakin ingin membuka sesi ${session.name} (${session.classId})? Mahasiswa dapat segera melakukan presensi.`}
+        subtitle={`Buka sesi ${session.courseName} (${session.className}) agar mahasiswa dapat melakukan presensi?`}
         confirmText="Ya, Buka Sesi"
         cancelText="Batal"
         confirmVariant="primary"
-        icon="play-circle-outline"
         onConfirm={handleConfirmOpen}
         onCancel={() => setConfirmOpenVisible(false)}
       />
 
-      {/* Confirmation Modal: Tutup Sesi Asisten */}
-      <ConfirmationModal
+      {/* Konfirmasi tutup sesi */}
+      <ConfirmModal
         visible={confirmCloseVisible}
         title="Tutup Sesi Praktikum"
-        message={`Apakah Anda yakin ingin menutup sesi praktikum ${session.name}? Presensi tidak lagi diterima setelah ditutup.`}
+        subtitle={`Yakin ingin menutup sesi ${session.courseName}? Presensi tidak dapat dilakukan lagi setelah sesi ditutup.`}
         confirmText="Ya, Tutup Sesi"
         cancelText="Batal"
         confirmVariant="danger"
-        icon="alert-circle-outline"
         onConfirm={handleConfirmClose}
         onCancel={() => setConfirmCloseVisible(false)}
-      />
-
-      {/* Success Feedback Modal */}
-      <SuccessModal
-        visible={successInfo.visible}
-        title={successInfo.title}
-        message={successInfo.message}
-        onClose={() => setSuccessInfo({ visible: false, title: '', message: '' })}
       />
     </ResponsiveContainer>
   );
@@ -411,37 +471,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.surface,
+    paddingHorizontal: APP_SPACING.lg,
+    paddingVertical: APP_SPACING.md,
+    backgroundColor: APP_COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: APP_COLORS.neutral200,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.borderLight,
+    backgroundColor: APP_COLORS.neutral100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   topBarTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
   },
   scrollContent: {
-    padding: Spacing.lg,
-    paddingBottom: Spacing.xxxl,
+    padding: APP_SPACING.lg,
+    paddingBottom: APP_SPACING.xxxl,
   },
   card: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    backgroundColor: APP_COLORS.white,
+    borderRadius: APP_RADIUS.lg,
+    padding: APP_SPACING.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.lg,
-    shadowColor: Colors.cardShadow,
+    borderColor: APP_COLORS.neutral200,
+    marginBottom: APP_SPACING.lg,
+    shadowColor: APP_COLORS.neutral950,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
@@ -455,145 +515,145 @@ const styles = StyleSheet.create({
   practicumName: {
     fontSize: 18,
     fontWeight: '800',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
     marginBottom: 4,
   },
   classBadge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: Spacing.sm,
+    backgroundColor: APP_COLORS.primary100,
+    paddingHorizontal: APP_SPACING.sm,
     paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
+    borderRadius: APP_RADIUS.sm,
     alignSelf: 'flex-start',
   },
   classText: {
     fontSize: 11,
     fontWeight: '600',
-    color: Colors.primary,
+    color: APP_COLORS.primary,
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: Spacing.lg,
+    backgroundColor: APP_COLORS.neutral100,
+    marginVertical: APP_SPACING.lg,
   },
   detailList: {
-    gap: Spacing.md,
+    gap: APP_SPACING.md,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: APP_SPACING.md,
   },
   detailIconBox: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: APP_COLORS.primary100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   detailLabel: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     marginBottom: 1,
   },
   detailValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
   },
   attendanceCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    backgroundColor: APP_COLORS.white,
+    borderRadius: APP_RADIUS.lg,
+    padding: APP_SPACING.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.lg,
+    borderColor: APP_COLORS.neutral200,
+    marginBottom: APP_SPACING.lg,
   },
   sectionHeaderTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+    color: APP_COLORS.neutral950,
+    marginBottom: APP_SPACING.md,
   },
   attendedStatusBox: {
     alignItems: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: APP_SPACING.md,
   },
   attendedIconCircle: {
-    marginBottom: Spacing.sm,
+    marginBottom: APP_SPACING.sm,
   },
   attendedTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.success,
+    color: APP_COLORS.opened,
     marginBottom: 4,
   },
   attendedTimestamp: {
     fontSize: 13,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
+    color: APP_COLORS.neutral500,
+    marginBottom: APP_SPACING.lg,
   },
   noticeBox: {
     alignItems: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: APP_SPACING.md,
   },
   noticeTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: Colors.textPrimary,
-    marginTop: Spacing.sm,
+    color: APP_COLORS.neutral950,
+    marginTop: APP_SPACING.sm,
     marginBottom: 4,
   },
   noticeDesc: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: Spacing.lg,
+    marginBottom: APP_SPACING.lg,
   },
   openAttendanceBox: {
     alignItems: 'center',
-    paddingVertical: Spacing.md,
-    backgroundColor: '#ECFDF5',
-    borderRadius: BorderRadius.md,
+    paddingVertical: APP_SPACING.md,
+    backgroundColor: APP_COLORS.openedSoft,
+    borderRadius: APP_RADIUS.md,
     borderWidth: 1,
     borderColor: '#A7F3D0',
-    padding: Spacing.lg,
+    padding: APP_SPACING.lg,
   },
   openAttendanceTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.status.open.text,
-    marginTop: Spacing.xs,
+    color: APP_COLORS.opened,
+    marginTop: APP_SPACING.xs,
     marginBottom: 4,
   },
   openAttendanceDesc: {
     fontSize: 13,
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: Spacing.lg,
+    marginBottom: APP_SPACING.lg,
   },
   actionButton: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
+    gap: APP_SPACING.sm,
+    paddingVertical: APP_SPACING.md,
+    borderRadius: APP_RADIUS.md,
   },
   buttonPrimary: {
-    backgroundColor: Colors.primary,
+    backgroundColor: APP_COLORS.primary,
   },
   buttonOpen: {
-    backgroundColor: Colors.success,
+    backgroundColor: APP_COLORS.opened,
   },
   buttonClose: {
-    backgroundColor: Colors.error,
+    backgroundColor: APP_COLORS.danger,
   },
   buttonDisabled: {
-    backgroundColor: Colors.textMuted,
+    backgroundColor: APP_COLORS.neutral500,
   },
   actionButtonText: {
     fontSize: 14,
@@ -602,100 +662,100 @@ const styles = StyleSheet.create({
   },
   controlHint: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     lineHeight: 18,
-    marginBottom: Spacing.md,
+    marginBottom: APP_SPACING.md,
   },
   closedNoticeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.borderLight,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
+    gap: APP_SPACING.sm,
+    backgroundColor: APP_COLORS.neutral100,
+    padding: APP_SPACING.md,
+    borderRadius: APP_RADIUS.md,
   },
   closedNoticeText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     flex: 1,
   },
   recapHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: APP_SPACING.md,
   },
   countBadge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: Spacing.sm,
+    backgroundColor: APP_COLORS.primary100,
+    paddingHorizontal: APP_SPACING.sm,
     paddingVertical: 3,
-    borderRadius: BorderRadius.full,
+    borderRadius: APP_RADIUS.pill,
   },
   countBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.primary,
+    color: APP_COLORS.primary,
   },
   recapList: {
-    gap: Spacing.sm,
+    gap: APP_SPACING.sm,
   },
   recapItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.sm,
+    gap: APP_SPACING.md,
+    paddingVertical: APP_SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    borderBottomColor: APP_COLORS.neutral100,
   },
   recapIndexCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: Colors.borderLight,
+    backgroundColor: APP_COLORS.neutral100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   recapIndexText: {
     fontSize: 11,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
   },
   recapStudentName: {
     fontSize: 14,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: APP_COLORS.neutral950,
   },
   recapStudentNim: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: APP_COLORS.neutral500,
     marginTop: 1,
   },
   hadirPill: {
-    backgroundColor: Colors.successLight,
-    paddingHorizontal: Spacing.sm,
+    backgroundColor: APP_COLORS.openedSoft,
+    paddingHorizontal: APP_SPACING.sm,
     paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
+    borderRadius: APP_RADIUS.sm,
   },
   hadirPillText: {
     fontSize: 11,
     fontWeight: '700',
-    color: Colors.success,
+    color: APP_COLORS.opened,
   },
   errorContainer: {
     flex: 1,
-    padding: Spacing.xl,
+    padding: APP_SPACING.xl,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backBtnFallback: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginTop: Spacing.lg,
+    gap: APP_SPACING.xs,
+    backgroundColor: APP_COLORS.primary,
+    paddingHorizontal: APP_SPACING.xl,
+    paddingVertical: APP_SPACING.md,
+    borderRadius: APP_RADIUS.md,
+    marginTop: APP_SPACING.lg,
   },
   backBtnFallbackText: {
     color: '#FFFFFF',
