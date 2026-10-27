@@ -1,6 +1,7 @@
+
 import React, { ReactNode } from 'react';
 import { View, StyleSheet, Platform, SafeAreaView } from 'react-native';
-import { Colors, MaxContentWidth } from '@/constants/theme';
+import { APP_COLORS, MaxContentWidth } from '@/constants/theme';
 
 interface ResponsiveContainerProps {
   children: ReactNode;
@@ -23,19 +24,19 @@ export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: APP_COLORS.white,
   },
   outerContainer: {
     flex: 1,
     width: '100%',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: APP_COLORS.white,
   },
   innerContainer: {
     flex: 1,
     width: '100%',
     minWidth: 0,
     maxWidth: Platform.OS === 'web' ? MaxContentWidth : '100%',
-    backgroundColor: Colors.background,
+    backgroundColor: APP_COLORS.white,
   },
 });

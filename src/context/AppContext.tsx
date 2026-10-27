@@ -4,7 +4,14 @@
  * users, schedules, session status, and attendance logs.
  */
 
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useRef,
+  ReactNode,
+} from 'react';
 import { User, DUMMY_USERS, DEFAULT_USER, UserRole } from '@/data/users';
 import {
   Schedule,
@@ -79,6 +86,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeUser, setActiveUser] = useState<User>(DEFAULT_USER);
   const [schedules, setSchedules] = useState<Schedule[]>(DUMMY_SCHEDULES);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(DUMMY_ATTENDANCE_LOGS);
+
+  // Kunci presensi agar pemanggilan berulang tidak membuat catatan ganda.
+  const attendanceKeysRef = useRef<Set<string>>(
+    new Set(
+      DUMMY_ATTENDANCE_LOGS.map(
+        (log) => `${log.scheduleId}:${log.studentId}`
+      )
+    )
+  );
   const [activeScheduleId, setActiveScheduleId] = useState<string>('sch-1');
 
   const activeRole: UserRole = activeUser.role;
@@ -162,12 +178,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     // SRS-VAL-002: Pencegahan presensi ganda
-    if (hasStudentAttended(scheduleId, student.id)) {
+    const attendanceKey = `${scheduleId}:${student.id}`;
+
+    if (
+      attendanceKeysRef.current.has(attendanceKey) ||
+      hasStudentAttended(scheduleId, student.id)
+    ) {
       return {
         success: false,
         message: 'Anda sudah melakukan presensi pada sesi ini sebelumnya.',
       };
     }
+
+    // Kunci langsung sebelum pembaruan state React selesai.
+    attendanceKeysRef.current.add(attendanceKey);
 
     // SRS-STU-002: Catat waktu presensi lokal (timestamp)
     const timestamp = getCurrentTimestamp();
@@ -198,6 +222,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setActiveUser(DEFAULT_USER);
     setSchedules(DUMMY_SCHEDULES);
     setAttendanceLogs(DUMMY_ATTENDANCE_LOGS);
+    attendanceKeysRef.current = new Set(
+      DUMMY_ATTENDANCE_LOGS.map(
+        (log) => `${log.scheduleId}:${log.studentId}`
+      )
+    );
     setActiveScheduleId('sch-1');
   };
 
