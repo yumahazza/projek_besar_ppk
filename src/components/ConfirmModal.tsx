@@ -50,11 +50,12 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onCancel}>
+      onRequestClose={onCancel}
+      statusBarTranslucent>
       <TouchableWithoutFeedback onPress={onCancel}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
-            <View style={[styles.dialog, APP_SHADOWS.modal]}>
+            <View style={[styles.dialog, APP_SHADOWS.modal]} accessibilityViewIsModal>
               {/* Header */}
               <Text style={styles.title}>{title}</Text>
 
@@ -119,6 +120,7 @@ const styles = StyleSheet.create({
   dialog: {
     width: '100%',
     maxWidth: 400,
+    maxHeight: '90%',
     backgroundColor: APP_COLORS.white,
     borderRadius: APP_RADIUS.xl,
     padding: APP_SPACING.xxl,
