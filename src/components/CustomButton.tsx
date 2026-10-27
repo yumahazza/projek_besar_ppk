@@ -202,7 +202,7 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
               sizeStyle.text,
               textStyle,
             ]}
-            numberOfLines={1}>
+            numberOfLines={2}>
             {title}
           </Text>
           {rightIcon && <View style={styles.rightIconMargin}>{rightIcon}</View>}
@@ -231,9 +231,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    maxWidth: '100%',
   },
   baseText: {
     textAlign: 'center',
+    flexShrink: 1,
   },
   iconMargin: {
     marginRight: APP_SPACING.sm,

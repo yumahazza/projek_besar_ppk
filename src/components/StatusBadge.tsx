@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { SessionStatus } from '@/data/schedules';
 import { APP_COLORS, APP_RADIUS } from '@/constants/theme';
@@ -28,39 +29,52 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   let backgroundColor: string = APP_COLORS.neutral100;
   let textColor: string = APP_COLORS.neutral700;
-  let dotColor: string = APP_COLORS.neutral500;
+  let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'information-circle-outline';
   let displayLabel = label;
 
   switch (normalized) {
     case 'DIBUKA':
       backgroundColor = APP_COLORS.openedSoft;
       textColor = APP_COLORS.opened;
-      dotColor = APP_COLORS.opened;
+      iconName = 'radio-button-on';
       displayLabel = displayLabel || 'DIBUKA';
       break;
     case 'BELUM_DIBUKA':
     case 'BELUM DIBUKA':
       backgroundColor = APP_COLORS.notOpenedSoft;
       textColor = APP_COLORS.notOpened;
-      dotColor = APP_COLORS.notOpened;
+      iconName = 'time-outline';
       displayLabel = displayLabel || 'BELUM DIBUKA';
       break;
     case 'SELESAI':
       backgroundColor = APP_COLORS.finishedSoft;
       textColor = APP_COLORS.finished;
-      dotColor = APP_COLORS.finished;
+      iconName = 'checkmark-circle-outline';
       displayLabel = displayLabel || 'SELESAI';
       break;
     case 'HADIR':
       backgroundColor = APP_COLORS.openedSoft;
       textColor = APP_COLORS.opened;
-      dotColor = APP_COLORS.opened;
+      iconName = 'radio-button-on';
       displayLabel = displayLabel || 'HADIR';
+      break;
+    case 'TIDAK_HADIR':
+    case 'TIDAK HADIR':
+      backgroundColor = APP_COLORS.errorSoft;
+      textColor = APP_COLORS.error;
+      iconName = 'close-circle-outline';
+      displayLabel = displayLabel || 'TIDAK HADIR';
+      break;
+    case 'INFO':
+      backgroundColor = APP_COLORS.primary100;
+      textColor = APP_COLORS.primary;
+      iconName = 'information-circle-outline';
+      displayLabel = displayLabel || 'INFO';
       break;
     case 'ERROR':
       backgroundColor = APP_COLORS.errorSoft;
       textColor = APP_COLORS.error;
-      dotColor = APP_COLORS.error;
+      iconName = 'alert-circle-outline';
       displayLabel = displayLabel || 'ERROR';
       break;
     default:
@@ -72,19 +86,19 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     sm: {
       paddingVertical: 2,
       paddingHorizontal: 8,
-      dotSize: 6,
+      iconSize: 12,
       fontSize: 11,
     },
     md: {
       paddingVertical: 4,
       paddingHorizontal: 12,
-      dotSize: 7,
+      iconSize: 14,
       fontSize: 12,
     },
     lg: {
       paddingVertical: 6,
       paddingHorizontal: 14,
-      dotSize: 8,
+      iconSize: 15,
       fontSize: 13,
     },
   }[size];
@@ -102,17 +116,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       ]}
       accessibilityRole="text"
       accessibilityLabel={`Status: ${displayLabel}`}>
-      <View
-        style={[
-          styles.dot,
-          {
-            width: sizeStyles.dotSize,
-            height: sizeStyles.dotSize,
-            borderRadius: sizeStyles.dotSize / 2,
-            backgroundColor: dotColor,
-          },
-        ]}
-      />
+      <Ionicons name={iconName} size={sizeStyles.iconSize} color={textColor} />
       <Text
         style={[
           styles.label,
@@ -134,9 +138,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderRadius: APP_RADIUS.pill,
     gap: 6,
-  },
-  dot: {
-    marginRight: 2,
   },
   label: {
     fontWeight: '700',
