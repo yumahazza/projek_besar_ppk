@@ -68,4 +68,3 @@ export const DUMMY_ATTENDANCE_LOGS: AttendanceRecord[] = [
     status: 'Hadir',
   },
 ];
-
