@@ -130,6 +130,11 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
   const attendancePercent = currentSchedule && currentSchedule.totalStudents > 0
     ? Math.round((attendanceList.length / currentSchedule.totalStudents) * 100)
     : 0;
+  const totalAttendance = schedules.reduce(
+    (total, schedule) => total + getAttendanceForSchedule(schedule.id).length,
+    0
+  );
+  const openSessions = schedules.filter((schedule) => schedule.status === 'DIBUKA').length;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -167,12 +172,53 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
           </View>
         )}
 
-        {/* Section Heading */}
+        {/* Assistant dashboard heading */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Dashboard Asisten</Text>
+          <View style={styles.sectionEyebrowRow}>
+            <View style={styles.eyebrowIcon}>
+              <Ionicons name="grid-outline" size={14} color={APP_COLORS.primary} />
+            </View>
+            <Text style={styles.sectionEyebrow}>RUANG KERJA ASISTEN</Text>
+          </View>
+          <Text style={styles.sectionTitle}>Kelola sesi praktikum</Text>
           <Text style={styles.sectionSubtitle}>
-            Pantau jadwal praktikum, kontrol sesi kehadiran, dan tinjau rekap mahasiswa
+            Pantau sesi, buka presensi, dan tinjau kehadiran praktikan dari satu tempat.
           </Text>
+        </View>
+
+        <View style={styles.overviewGrid}>
+          <View style={[styles.overviewCard, styles.overviewCardPrimary]}>
+            <View style={styles.overviewIcon}>
+              <Ionicons name="calendar-outline" size={18} color={APP_COLORS.primary} />
+            </View>
+            <Text style={styles.overviewValue}>{schedules.length}</Text>
+            <Text style={styles.overviewLabel}>Total kelas</Text>
+          </View>
+          <View style={[styles.overviewCard, styles.overviewCardGreen]}>
+            <View style={styles.overviewIcon}>
+              <Ionicons name="radio-outline" size={18} color={APP_COLORS.opened} />
+            </View>
+            <Text style={styles.overviewValue}>{openSessions}</Text>
+            <Text style={styles.overviewLabel}>Sesi aktif</Text>
+          </View>
+          <View style={[styles.overviewCard, styles.overviewCardPurple]}>
+            <View style={styles.overviewIcon}>
+              <Ionicons name="people-outline" size={18} color="#7C3AED" />
+            </View>
+            <Text style={styles.overviewValue}>{totalAttendance}</Text>
+            <Text style={styles.overviewLabel}>Total hadir</Text>
+          </View>
+        </View>
+
+        <View style={styles.todaySectionHeader}>
+          <View>
+            <Text style={styles.todayTitle}>Jadwal hari ini</Text>
+            <Text style={styles.todaySubtitle}>Pilih kelas untuk mengelola sesi</Text>
+          </View>
+          <View style={styles.todayBadge}>
+            <Ionicons name="time-outline" size={14} color={APP_COLORS.primary} />
+            <Text style={styles.todayBadgeText}>Live view</Text>
+          </View>
         </View>
 
         {/* SRS-AST-001: Active Schedule Hero Card */}
@@ -539,16 +585,112 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: APP_SPACING.lg,
   },
+  sectionEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: APP_SPACING.sm,
+    marginBottom: APP_SPACING.sm,
+  },
+  eyebrowIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: APP_RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: APP_COLORS.primary100,
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: APP_COLORS.primary,
+  },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: APP_COLORS.neutral950,
   },
   sectionSubtitle: {
     fontSize: 14,
     color: APP_COLORS.neutral500,
-    marginTop: 4,
+    marginTop: 6,
     lineHeight: 20,
+  },
+  overviewGrid: {
+    flexDirection: 'row',
+    gap: APP_SPACING.sm,
+    marginBottom: APP_SPACING.xxl,
+  },
+  overviewCard: {
+    flex: 1,
+    minHeight: 104,
+    padding: APP_SPACING.md,
+    borderRadius: APP_RADIUS.lg,
+    borderWidth: 1,
+  },
+  overviewCardPrimary: {
+    backgroundColor: APP_COLORS.primary50,
+    borderColor: APP_COLORS.primary100,
+  },
+  overviewCardGreen: {
+    backgroundColor: APP_COLORS.openedSoft,
+    borderColor: '#BBF7D0',
+  },
+  overviewCardPurple: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#DDD6FE',
+  },
+  overviewIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: APP_COLORS.white,
+  },
+  overviewValue: {
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: '700',
+    color: APP_COLORS.neutral950,
+    marginTop: APP_SPACING.sm,
+  },
+  overviewLabel: {
+    fontSize: 11,
+    color: APP_COLORS.neutral500,
+    marginTop: 1,
+  },
+  todaySectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: APP_SPACING.md,
+  },
+  todayTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: APP_COLORS.neutral950,
+  },
+  todaySubtitle: {
+    fontSize: 12,
+    color: APP_COLORS.neutral500,
+    marginTop: 3,
+  },
+  todayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: APP_SPACING.sm,
+    paddingVertical: 6,
+    borderRadius: APP_RADIUS.pill,
+    backgroundColor: APP_COLORS.white,
+    borderWidth: 1,
+    borderColor: APP_COLORS.neutral200,
+  },
+  todayBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.primary,
   },
   activeCard: {
     marginBottom: APP_SPACING.xxl,
