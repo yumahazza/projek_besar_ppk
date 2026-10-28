@@ -56,14 +56,21 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       backgroundColor = APP_COLORS.openedSoft;
       textColor = APP_COLORS.opened;
       iconName = 'radio-button-on';
-      displayLabel = displayLabel || 'HADIR';
+      displayLabel = displayLabel || 'Hadir';
       break;
+    case 'IZIN':
+      backgroundColor = APP_COLORS.warningBg;
+      textColor = APP_COLORS.warning;
+      iconName = 'time-outline';
+      displayLabel = displayLabel || 'Izin';
+      break;
+    case 'ALFA':
     case 'TIDAK_HADIR':
     case 'TIDAK HADIR':
       backgroundColor = APP_COLORS.errorSoft;
       textColor = APP_COLORS.error;
       iconName = 'close-circle-outline';
-      displayLabel = displayLabel || 'TIDAK HADIR';
+      displayLabel = displayLabel || 'Alfa';
       break;
     case 'INFO':
       backgroundColor = APP_COLORS.primary100;

@@ -9,4 +9,8 @@ export * from './Card';
 export * from './ConfirmModal';
 export * from './EmptyState';
 export * from './HeaderRolePicker';
+export * from './AppHeader';
+export * from './BottomNavigation';
+export * from './SummaryTile';
+export * from './DonutChart';
 
