@@ -121,6 +121,10 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
     0
   );
   const openSessions = schedules.filter((schedule) => schedule.status === 'DIBUKA').length;
+  const totalRegistered = currentSchedule?.totalStudents || 20;
+  const hadirCount = attendanceList.length;
+  const izinCount = 0;
+  const alfaCount = Math.max(0, totalRegistered - hadirCount);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -163,6 +167,19 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
             </Pressable>
           </View>
         )}
+
+        {/* User Greeting & Header Role Picker */}
+        <View style={styles.greetingRow}>
+          <View style={styles.greetingTextGroup}>
+            <Text style={styles.greetingName}>
+              Halo, {activeUser.name.split(' ')[0]} 👋
+            </Text>
+            <Text style={styles.greetingRole}>
+              Asisten Praktikum
+            </Text>
+          </View>
+          <HeaderRolePicker compact />
+        </View>
 
         {/* Assistant dashboard heading */}
         <View style={styles.sectionHeader}>
@@ -233,12 +250,43 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
                 {currentSchedule.courseName}
               </Text>
               <Text style={styles.activeCourseMeta}>
-                {currentSchedule.time} | {currentSchedule.room}
+                {currentSchedule.time} | {currentSchedule.room} • {attendancePercent}% Hadir
               </Text>
             </View>
-            <View style={styles.chevronWrapper}>
-              <Ionicons name="chevron-forward" size={18} color={APP_COLORS.neutral500} />
-            </View>
+            <Pressable
+              onPress={() => {
+                if (currentSchedule.status === 'DIBUKA') {
+                  handleCloseSessionModal(currentSchedule.id);
+                } else {
+                  handleOpenSessionModal(currentSchedule.id);
+                }
+              }}
+              style={({ pressed }) => [
+                styles.quickToggleBtn,
+                currentSchedule.status === 'DIBUKA'
+                  ? styles.quickToggleClose
+                  : styles.quickToggleOpen,
+                pressed && styles.pressed,
+              ]}>
+              <Ionicons
+                name={currentSchedule.status === 'DIBUKA' ? 'pause' : 'play'}
+                size={14}
+                color={
+                  currentSchedule.status === 'DIBUKA'
+                    ? APP_COLORS.danger
+                    : APP_COLORS.primary
+                }
+              />
+              <Text
+                style={[
+                  styles.quickToggleText,
+                  currentSchedule.status === 'DIBUKA'
+                    ? styles.quickToggleTextDanger
+                    : styles.quickToggleTextPrimary,
+                ]}>
+                {currentSchedule.status === 'DIBUKA' ? 'Tutup' : 'Buka'}
+              </Text>
+            </Pressable>
           </Card>
         )}
 
@@ -301,7 +349,7 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
 
         {/* Section Jadwal Hari Ini */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Jadwal Hari Ini</Text>
+          <Text style={styles.scheduleSectionTitle}>Jadwal Hari Ini</Text>
           <Pressable
             onPress={() => navigation.navigate('ScheduleList')}
             style={({ pressed }) => pressed && styles.pressed}>
@@ -395,6 +443,19 @@ const styles = StyleSheet.create({
   greetingTextGroup: {
     flex: 1,
     marginRight: APP_SPACING.sm,
+  },
+  greetingName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: APP_COLORS.navyHeading,
+  },
+  greetingRole: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
+  },
+  sectionHeader: {
+    marginBottom: APP_SPACING.lg,
   },
   sectionEyebrowRow: {
     flexDirection: 'row',
@@ -548,6 +609,33 @@ const styles = StyleSheet.create({
   chevronWrapper: {
     paddingLeft: APP_SPACING.xs,
   },
+  quickToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: APP_SPACING.md,
+    paddingVertical: 8,
+    borderRadius: APP_RADIUS.pill,
+    borderWidth: 1,
+  },
+  quickToggleOpen: {
+    backgroundColor: APP_COLORS.primary50,
+    borderColor: APP_COLORS.primary100,
+  },
+  quickToggleClose: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  quickToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  quickToggleTextPrimary: {
+    color: APP_COLORS.primary,
+  },
+  quickToggleTextDanger: {
+    color: APP_COLORS.danger,
+  },
   quickActionsGrid: {
     flexDirection: 'row',
     gap: APP_SPACING.sm,
@@ -584,7 +672,7 @@ const styles = StyleSheet.create({
     marginTop: APP_SPACING.lg,
     marginBottom: APP_SPACING.sm,
   },
-  sectionTitle: {
+  scheduleSectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: APP_COLORS.navyHeading,
