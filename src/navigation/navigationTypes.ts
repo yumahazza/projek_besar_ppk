@@ -10,5 +10,23 @@ export interface NavigationProp {
   params?: any;
 }
 
-export type AssistantScreenName = 'AssistantHome' | 'SessionRecap';
-export type StudentScreenName = 'StudentHome' | 'StudentHistory';
+export type AssistantScreenName =
+  | 'AssistantHome'
+  | 'SessionRecap'
+  | 'ScheduleList'
+  | 'Profile'
+  | 'SessionDetail'
+  | 'SessionControl'
+  | 'StudentList'
+  | 'AttendanceDetail'
+  | 'AttendanceStats'
+  | 'Notifications';
+
+export type StudentScreenName =
+  | 'StudentHome'
+  | 'ScheduleList'
+  | 'StudentHistory'
+  | 'Profile'
+  | 'SessionDetail'
+  | 'AttendanceDetail'
+  | 'Notifications';

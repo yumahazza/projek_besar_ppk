@@ -16,7 +16,15 @@ import { useApp } from '@/context/AppContext';
 import type { User } from '@/data/users';
 import { APP_COLORS, APP_RADIUS, APP_SPACING, APP_SHADOWS } from '@/constants/theme';
 
-export const HeaderRolePicker: React.FC = () => {
+export interface HeaderRolePickerProps {
+  compact?: boolean;
+  showGreeting?: boolean;
+}
+
+export const HeaderRolePicker: React.FC<HeaderRolePickerProps> = ({
+  compact = false,
+  showGreeting = true,
+}) => {
   const { activeUser, users, switchUser } = useApp();
   const [pickerOpen, setPickerOpen] = useState(false);
   const assistant = activeUser.role === 'assistant';
@@ -26,43 +34,52 @@ export const HeaderRolePicker: React.FC = () => {
     setPickerOpen(false);
   };
 
+  const triggerButton = (
+    <Pressable
+      onPress={() => setPickerOpen(true)}
+      accessibilityRole="button"
+      accessibilityLabel={`Ganti akun, saat ini ${activeUser.name}`}
+      accessibilityHint="Buka daftar akun asisten dan praktikan"
+      style={({ pressed }) => [
+        styles.accountTrigger,
+        assistant ? styles.accountAssistant : styles.accountStudent,
+        pressed && styles.pressed,
+      ]}>
+      <Ionicons
+        name={assistant ? 'shield-checkmark-outline' : 'school-outline'}
+        size={16}
+        color={assistant ? APP_COLORS.primary : APP_COLORS.opened}
+      />
+      <Text style={[styles.triggerText, assistant ? styles.textAssistant : styles.textStudent]}>
+        {assistant ? 'Asisten' : 'Praktikan'}
+      </Text>
+      <Ionicons
+        name="chevron-down"
+        size={14}
+        color={assistant ? APP_COLORS.primary : APP_COLORS.opened}
+      />
+    </Pressable>
+  );
+
   return (
     <>
-      <View style={styles.header}>
-        <View style={styles.introduction}>
-          <Text style={styles.greeting} numberOfLines={1}>
-            Halo, {activeUser.name.split(' ')[0]}
-          </Text>
-          <Text style={styles.identity} numberOfLines={1}>
-            {assistant ? 'Asisten Praktikum' : `Praktikan · ${activeUser.nim || '-'}`}
-          </Text>
+      {compact ? (
+        triggerButton
+      ) : showGreeting ? (
+        <View style={styles.header}>
+          <View style={styles.introduction}>
+            <Text style={styles.greeting} numberOfLines={1}>
+              Halo, {activeUser.name.split(' ')[0]}
+            </Text>
+            <Text style={styles.identity} numberOfLines={1}>
+              {assistant ? 'Asisten Praktikum' : `Praktikan · ${activeUser.nim || '-'}`}
+            </Text>
+          </View>
+          {triggerButton}
         </View>
-
-        <Pressable
-          onPress={() => setPickerOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Ganti akun, saat ini ${activeUser.name}`}
-          accessibilityHint="Buka daftar akun asisten dan praktikan"
-          style={({ pressed }) => [
-            styles.accountTrigger,
-            assistant ? styles.accountAssistant : styles.accountStudent,
-            pressed && styles.pressed,
-          ]}>
-          <Ionicons
-            name={assistant ? 'shield-checkmark-outline' : 'school-outline'}
-            size={17}
-            color={assistant ? APP_COLORS.primary : APP_COLORS.opened}
-          />
-          <Text style={[styles.triggerText, assistant ? styles.textAssistant : styles.textStudent]}>
-            {assistant ? 'Asisten' : 'Praktikan'}
-          </Text>
-          <Ionicons
-            name="chevron-down"
-            size={15}
-            color={assistant ? APP_COLORS.primary : APP_COLORS.opened}
-          />
-        </Pressable>
-      </View>
+      ) : (
+        triggerButton
+      )}
 
       <Modal
         visible={pickerOpen}
