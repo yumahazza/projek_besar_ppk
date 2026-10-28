@@ -1,21 +1,9 @@
-/**
- * AssistantHomeScreen Component
- * Programmer: Fritz (Flow Asisten & Pengelolaan Sesi)
- * SRS-AST-001: Daftar jadwal praktikum & informasi detailnya
- * SRS-AST-002: Buka sesi praktikum (BELUM_DIBUKA -> DIBUKA)
- * SRS-AST-003: Tutup sesi praktikum (DIBUKA -> SELESAI)
- * SRS-AST-004: Modal konfirmasi sebelum buka / tutup sesi
- * SRS-AST-005: Akses rekapitulasi kehadiran praktikan
- * Follows DSG.md Section 10, 13, 14, 17, 23, 25
- */
-
 import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,8 +11,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/context/AppContext';
 import { Card } from '@/components/Card';
 import { StatusBadge } from '@/components/StatusBadge';
-import { CustomButton } from '@/components/CustomButton';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { AppHeader } from '@/components/AppHeader';
+import { BottomNavigation } from '@/components/BottomNavigation';
+import { SummaryTile } from '@/components/SummaryTile';
+import { HeaderRolePicker } from '@/components/HeaderRolePicker';
 import { NavigationProp } from '@/navigation/navigationTypes';
 import {
   APP_COLORS,
@@ -83,11 +74,9 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
     ? getAttendanceForSchedule(currentSchedule.id)
     : [];
 
-  const targetScheduleForModal = schedules.find(
-    (s) => s.id === confirmModal.scheduleId
-  ) || currentSchedule;
+  const targetScheduleForModal =
+    schedules.find((s) => s.id === confirmModal.scheduleId) || currentSchedule;
 
-  // SRS-AST-004: Buka modal konfirmasi sebelum aksi
   const handleOpenSessionModal = (scheduleId: string) => {
     setConfirmModal({
       visible: true,
@@ -104,23 +93,20 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
     });
   };
 
-  // Eksekusi aksi setelah konfirmasi pengguna
   const handleConfirmAction = () => {
     const { action, scheduleId } = confirmModal;
     const target = schedules.find((s) => s.id === scheduleId) || currentSchedule;
 
     if (action === 'open') {
-      // SRS-AST-002: Status berubah ke DIBUKA
       openSession(scheduleId);
       showNotification(
-        `Sesi "${target?.courseName} - ${target?.className}" berhasil DIBUKA. Praktikan sekarang dapat melakukan presensi!`,
+        `Sesi "${target?.courseName} - ${target?.className}" berhasil DIBUKA.`,
         'success'
       );
     } else {
-      // SRS-AST-003: Status berubah ke SELESAI
       closeSession(scheduleId);
       showNotification(
-        `Sesi "${target?.courseName} - ${target?.className}" telah DITUTUP. Presensi sudah diakhiri.`,
+        `Sesi "${target?.courseName} - ${target?.className}" telah DITUTUP.`,
         'info'
       );
     }
@@ -137,7 +123,13 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
   const openSessions = schedules.filter((schedule) => schedule.status === 'DIBUKA').length;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {/* Top Academic Blue Header */}
+      <AppHeader
+        title="PPK"
+        onNotificationPress={() => navigation.navigate('Notifications')}
+      />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
@@ -156,7 +148,7 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
                   ? 'checkmark-circle'
                   : 'information-circle'
               }
-              size={20}
+              size={18}
               color={
                 notification.type === 'success'
                   ? APP_COLORS.opened
@@ -224,288 +216,125 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
         {/* SRS-AST-001: Active Schedule Hero Card */}
         {currentSchedule && (
           <Card
-            style={styles.activeCard}
-            highlighted={currentSchedule.status === 'DIBUKA'}>
-            {/* Header Card: Status Badge & Date */}
-            <View style={styles.cardHeaderRow}>
-              <StatusBadge status={currentSchedule.status} size="md" />
-              <View style={styles.dateBadge}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={13}
-                  color={APP_COLORS.neutral500}
-                />
-                <Text style={styles.dateText}>{currentSchedule.date}</Text>
+            onPress={() => {
+              setActiveScheduleId(currentSchedule.id);
+              navigation.navigate('SessionDetail', { scheduleId: currentSchedule.id });
+            }}
+            style={[
+              styles.activeCard,
+              currentSchedule.status === 'DIBUKA' && styles.activeCardOpen,
+            ]}>
+            <View style={styles.activeCardTop}>
+              <View style={styles.activeCardTitleRow}>
+                <Text style={styles.activeCardBadgeLabel}>Sesi Aktif</Text>
+                <StatusBadge status={currentSchedule.status} size="sm" />
               </View>
+              <Text style={styles.activeCourseName}>
+                {currentSchedule.courseName}
+              </Text>
+              <Text style={styles.activeCourseMeta}>
+                {currentSchedule.time} | {currentSchedule.room}
+              </Text>
             </View>
-
-            {/* Course Title & Class Info */}
-            <Text style={styles.courseTitle}>{currentSchedule.courseName}</Text>
-            <Text style={styles.classSubtitle}>{currentSchedule.className}</Text>
-
-            {/* Session Status Live Banner (if DIBUKA) */}
-            {currentSchedule.status === 'DIBUKA' && (
-              <View style={styles.liveSessionBadge}>
-                <View style={styles.pulsingDot} />
-                <Text style={styles.liveSessionText}>
-                  SESI SEDANG DIBUKA • Presensi Aktif
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.metaDivider} />
-
-            {/* Schedule Metadata Grid */}
-            <View style={styles.metaGrid}>
-              <View style={styles.metaItem}>
-                <View style={styles.metaIconCircle}>
-                  <Ionicons
-                    name="time-outline"
-                    size={16}
-                    color={APP_COLORS.primary}
-                  />
-                </View>
-                <View>
-                  <Text style={styles.metaLabel}>Waktu</Text>
-                  <Text style={styles.metaValue}>{currentSchedule.time}</Text>
-                </View>
-              </View>
-
-              <View style={styles.metaItem}>
-                <View style={styles.metaIconCircle}>
-                  <Ionicons
-                    name="location-outline"
-                    size={16}
-                    color={APP_COLORS.primary}
-                  />
-                </View>
-                <View>
-                  <Text style={styles.metaLabel}>Ruangan</Text>
-                  <Text style={styles.metaValue}>{currentSchedule.room}</Text>
-                </View>
-              </View>
-
-              <View style={styles.metaItem}>
-                <View style={styles.metaIconCircle}>
-                  <Ionicons
-                    name="person-outline"
-                    size={16}
-                    color={APP_COLORS.primary}
-                  />
-                </View>
-                <View>
-                  <Text style={styles.metaLabel}>Asisten Pengampu</Text>
-                  <Text style={styles.metaValue}>
-                    {currentSchedule.assistantName || activeUser.name}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* SRS-AST-005: Attendance Quick Summary Bar */}
-            <View style={styles.attendanceSummaryBox}>
-              <View style={styles.attendanceSummaryHeader}>
-                <View style={styles.attendanceSummaryTitleGroup}>
-                  <Ionicons
-                    name="people"
-                    size={18}
-                    color={APP_COLORS.primary}
-                  />
-                  <Text style={styles.attendanceSummaryTitle}>
-                    Kehadiran Mahasiswa
-                  </Text>
-                </View>
-                <Text style={styles.attendanceCountText}>
-                  <Text style={styles.attendanceHighlight}>
-                    {attendanceList.length}
-                  </Text>{' '}
-                  / {currentSchedule.totalStudents} ({attendancePercent}%)
-                </Text>
-              </View>
-
-              <View style={styles.progressBarTrack}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    { width: `${Math.min(100, attendancePercent)}%` },
-                  ]}
-                />
-              </View>
-            </View>
-
-            {/* Session Action Buttons based on status */}
-            <View style={styles.actionsContainer}>
-              {/* SRS-AST-002: Buka Sesi saat BELUM_DIBUKA */}
-              {currentSchedule.status === 'BELUM_DIBUKA' && (
-                <CustomButton
-                  title="Buka Sesi"
-                  variant="primary"
-                  size="lg"
-                  leftIcon={
-                    <Ionicons
-                      name="play"
-                      size={18}
-                      color={APP_COLORS.white}
-                    />
-                  }
-                  onPress={() => handleOpenSessionModal(currentSchedule.id)}
-                />
-              )}
-
-              {/* SRS-AST-003 & SRS-AST-005: Saat DIBUKA */}
-              {currentSchedule.status === 'DIBUKA' && (
-                <View style={styles.buttonStack}>
-                  <CustomButton
-                    title="Lihat Rekap Presensi"
-                    variant="primary"
-                    size="md"
-                    leftIcon={
-                      <Ionicons
-                        name="list"
-                        size={18}
-                        color={APP_COLORS.white}
-                      />
-                    }
-                    rightIcon={
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color={APP_COLORS.white}
-                      />
-                    }
-                    onPress={() =>
-                      navigation.navigate('SessionRecap', {
-                        scheduleId: currentSchedule.id,
-                      })
-                    }
-                  />
-                  <CustomButton
-                    title="Tutup Sesi"
-                    variant="danger"
-                    size="md"
-                    leftIcon={
-                      <Ionicons
-                        name="stop-circle"
-                        size={18}
-                        color={APP_COLORS.white}
-                      />
-                    }
-                    onPress={() => handleCloseSessionModal(currentSchedule.id)}
-                  />
-                </View>
-              )}
-
-              {/* Saat SELESAI */}
-              {currentSchedule.status === 'SELESAI' && (
-                <View style={styles.buttonStack}>
-                  <View style={styles.sessionFinishedNotice}>
-                    <Ionicons
-                      name="checkmark-done-circle"
-                      size={20}
-                      color={APP_COLORS.finished}
-                    />
-                    <Text style={styles.sessionFinishedText}>
-                      Sesi praktikum telah selesai & ditutup
-                    </Text>
-                  </View>
-                  <CustomButton
-                    title="Lihat Rekap Presensi"
-                    variant="secondary"
-                    size="md"
-                    leftIcon={
-                      <Ionicons
-                        name="list"
-                        size={18}
-                        color={APP_COLORS.primary}
-                      />
-                    }
-                    rightIcon={
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color={APP_COLORS.primary}
-                      />
-                    }
-                    onPress={() =>
-                      navigation.navigate('SessionRecap', {
-                        scheduleId: currentSchedule.id,
-                      })
-                    }
-                  />
-                </View>
-              )}
+            <View style={styles.chevronWrapper}>
+              <Ionicons name="chevron-forward" size={18} color={APP_COLORS.neutral500} />
             </View>
           </Card>
         )}
 
-        {/* SRS-AST-001: Daftar Semua Jadwal Praktikum yang Diampu */}
-        <View style={styles.scheduleListSection}>
-          <View style={styles.scheduleListHeaderRow}>
-            <Text style={styles.scheduleListTitle}>Daftar Jadwal Praktikum</Text>
-            <Text style={styles.scheduleListCountBadge}>
-              {schedules.length} Kelas
-            </Text>
-          </View>
+        {/* 4 Quick Action Shortcuts Grid */}
+        <View style={styles.quickActionsGrid}>
+          {/* Rekap */}
+          <Pressable
+            onPress={() =>
+              navigation.navigate('SessionRecap', { scheduleId: currentSchedule.id })
+            }
+            style={({ pressed }) => [styles.actionTile, pressed && styles.pressed]}>
+            <View style={styles.actionIconBox}>
+              <Ionicons name="stats-chart" size={20} color={APP_COLORS.primary} />
+            </View>
+            <Text style={styles.actionTileLabel}>Rekap</Text>
+          </Pressable>
 
-          {schedules.map((item) => {
+          {/* Jadwal */}
+          <Pressable
+            onPress={() => navigation.navigate('ScheduleList')}
+            style={({ pressed }) => [styles.actionTile, pressed && styles.pressed]}>
+            <View style={styles.actionIconBox}>
+              <Ionicons name="calendar" size={20} color={APP_COLORS.primary} />
+            </View>
+            <Text style={styles.actionTileLabel}>Jadwal</Text>
+          </Pressable>
+
+          {/* Presensi / Kontrol Sesi */}
+          <Pressable
+            onPress={() =>
+              navigation.navigate('SessionControl', { scheduleId: currentSchedule.id })
+            }
+            style={({ pressed }) => [styles.actionTile, pressed && styles.pressed]}>
+            <View style={styles.actionIconBox}>
+              <Ionicons name="shield-checkmark" size={20} color={APP_COLORS.primary} />
+            </View>
+            <Text style={styles.actionTileLabel}>Presensi</Text>
+          </Pressable>
+
+          {/* Mahasiswa */}
+          <Pressable
+            onPress={() =>
+              navigation.navigate('StudentList', { scheduleId: currentSchedule.id })
+            }
+            style={({ pressed }) => [styles.actionTile, pressed && styles.pressed]}>
+            <View style={styles.actionIconBox}>
+              <Ionicons name="people" size={20} color={APP_COLORS.primary} />
+            </View>
+            <Text style={styles.actionTileLabel}>Mahasiswa</Text>
+          </Pressable>
+        </View>
+
+        {/* Summary Metrics (4 compact tiles) */}
+        <SummaryTile
+          hadir={hadirCount}
+          izin={izinCount}
+          alfa={alfaCount}
+          total={totalRegistered}
+        />
+
+        {/* Section Jadwal Hari Ini */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Jadwal Hari Ini</Text>
+          <Pressable
+            onPress={() => navigation.navigate('ScheduleList')}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <Text style={styles.seeAllText}>Lihat Semua &gt;</Text>
+          </Pressable>
+        </View>
+
+        {/* Schedule List */}
+        <View style={styles.scheduleList}>
+          {schedules.map((item, idx) => {
             const isSelected = item.id === currentSchedule?.id;
-            const logCount = getAttendanceForSchedule(item.id).length;
-
             return (
               <Card
                 key={item.id}
-                onPress={() => setActiveScheduleId(item.id)}
+                onPress={() => {
+                  setActiveScheduleId(item.id);
+                  navigation.navigate('SessionDetail', { scheduleId: item.id });
+                }}
                 style={[
                   styles.scheduleItemCard,
                   isSelected && styles.scheduleItemSelected,
                 ]}>
-                <View style={styles.scheduleItemTop}>
-                  <View style={styles.scheduleItemInfo}>
-                    <View style={styles.itemTitleRow}>
-                      <Text style={styles.itemCourseName}>
-                        {item.courseName}
-                      </Text>
-                      {isSelected && (
-                        <View style={styles.selectedPill}>
-                          <Text style={styles.selectedPillText}>Aktif</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.itemClassText}>{item.className}</Text>
-                    <Text style={styles.itemMeta}>
-                      {item.time} • {item.room}
+                <View style={styles.scheduleRowContent}>
+                  <View style={styles.courseIndexBadge}>
+                    <Text style={styles.courseIndexText}>{idx + 1}</Text>
+                  </View>
+                  <View style={styles.courseInfoCol}>
+                    <Text style={styles.courseNameText}>{item.courseName}</Text>
+                    <Text style={styles.courseMetaText}>
+                      {item.time} | {item.room}
                     </Text>
                   </View>
                   <StatusBadge status={item.status} size="sm" />
-                </View>
-
-                <View style={styles.itemDivider} />
-
-                <View style={styles.itemFooter}>
-                  <View style={styles.itemAttendanceGroup}>
-                    <Ionicons
-                      name="people-outline"
-                      size={14}
-                      color={APP_COLORS.neutral500}
-                    />
-                    <Text style={styles.itemAttendance}>
-                      {logCount} / {item.totalStudents} praktikan hadir
-                    </Text>
-                  </View>
-
-                  <Pressable
-                    onPress={() => {
-                      setActiveScheduleId(item.id);
-                      navigation.navigate('SessionRecap', { scheduleId: item.id });
-                    }}
-                    style={styles.quickRecapLink}>
-                    <Text style={styles.quickRecapText}>Rekap</Text>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={14}
-                      color={APP_COLORS.primary}
-                    />
-                  </Pressable>
                 </View>
               </Card>
             );
@@ -513,14 +342,10 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
         </View>
       </ScrollView>
 
-      {/* SRS-AST-004: Modal Konfirmasi Aksi Buka / Tutup Sesi */}
+      {/* Confirmation Modal */}
       <ConfirmModal
         visible={confirmModal.visible}
-        title={
-          confirmModal.action === 'open'
-            ? 'Buka Sesi?'
-            : 'Tutup Sesi?'
-        }
+        title={confirmModal.action === 'open' ? 'Buka Sesi?' : 'Tutup Sesi?'}
         subtitle={
           confirmModal.action === 'open'
             ? 'Praktikan akan dapat melakukan presensi setelah sesi dibuka.'
@@ -532,15 +357,20 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
           time: targetScheduleForModal?.time,
           room: targetScheduleForModal?.room,
         }}
-        confirmText={
-          confirmModal.action === 'open' ? 'Ya, Buka' : 'Tutup Sesi'
-        }
+        confirmText={confirmModal.action === 'open' ? 'Ya, Buka' : 'Tutup Sesi'}
         cancelText="Batal"
         confirmVariant={confirmModal.action === 'open' ? 'primary' : 'danger'}
         onConfirm={handleConfirmAction}
         onCancel={() =>
           setConfirmModal({ visible: false, action: 'open', scheduleId: '' })
         }
+      />
+
+      {/* Bottom Navigation */}
+      <BottomNavigation
+        role="assistant"
+        activeTab="AssistantHome"
+        onTabChange={(tabKey) => navigation.navigate(tabKey)}
       />
     </SafeAreaView>
   );
@@ -549,41 +379,22 @@ export const AssistantHomeScreen: React.FC<AssistantHomeScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: APP_COLORS.neutral50,
+    backgroundColor: APP_COLORS.background,
   },
   scrollContent: {
-    padding: APP_SPACING.xl,
-    paddingBottom: APP_SPACING.xxxl * 2,
+    paddingHorizontal: APP_SPACING.lg,
+    paddingTop: APP_SPACING.md,
+    paddingBottom: APP_SPACING.xl,
   },
-  notificationBanner: {
+  greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: APP_SPACING.md,
-    borderRadius: APP_RADIUS.md,
-    marginBottom: APP_SPACING.lg,
-    borderWidth: 1,
-    gap: 8,
+    justifyContent: 'space-between',
+    marginVertical: APP_SPACING.md,
   },
-  bannerSuccess: {
-    backgroundColor: APP_COLORS.openedSoft,
-    borderColor: '#BBF7D0',
-  },
-  bannerInfo: {
-    backgroundColor: APP_COLORS.primary50,
-    borderColor: APP_COLORS.primary100,
-  },
-  notificationText: {
+  greetingTextGroup: {
     flex: 1,
-    fontSize: 13,
-    color: APP_COLORS.neutral950,
-    fontWeight: '500',
-    lineHeight: 18,
-  },
-  closeNotification: {
-    padding: 4,
-  },
-  sectionHeader: {
-    marginBottom: APP_SPACING.lg,
+    marginRight: APP_SPACING.sm,
   },
   sectionEyebrowRow: {
     flexDirection: 'row',
@@ -608,7 +419,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: APP_COLORS.neutral950,
+    color: APP_COLORS.navyHeading,
   },
   sectionSubtitle: {
     fontSize: 14,
@@ -693,264 +504,168 @@ const styles = StyleSheet.create({
     color: APP_COLORS.primary,
   },
   activeCard: {
-    marginBottom: APP_SPACING.xxl,
-    padding: APP_SPACING.xl,
-  },
-  cardHeaderRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: APP_SPACING.md,
-  },
-  dateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: APP_COLORS.neutral100,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: APP_RADIUS.pill,
-    gap: 4,
-  },
-  dateText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: APP_COLORS.neutral700,
-  },
-  courseTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: APP_COLORS.neutral950,
-  },
-  classSubtitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: APP_COLORS.primary,
-    marginTop: 2,
-  },
-  liveSessionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: APP_COLORS.openedSoft,
-    paddingVertical: 6,
-    paddingHorizontal: APP_SPACING.md,
-    borderRadius: APP_RADIUS.md,
-    marginTop: APP_SPACING.md,
-    gap: 8,
-  },
-  pulsingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: APP_COLORS.opened,
-  },
-  liveSessionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: APP_COLORS.opened,
-    letterSpacing: 0.3,
-  },
-  metaDivider: {
-    height: 1,
-    backgroundColor: APP_COLORS.neutral200,
-    marginVertical: APP_SPACING.lg,
-  },
-  metaGrid: {
-    gap: APP_SPACING.md,
-    marginBottom: APP_SPACING.lg,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: APP_SPACING.sm,
-  },
-  metaIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: APP_COLORS.primary50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: APP_COLORS.neutral500,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-  },
-  metaValue: {
-    fontSize: 13,
-    color: APP_COLORS.neutral950,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  attendanceSummaryBox: {
-    backgroundColor: APP_COLORS.neutral50,
-    borderColor: APP_COLORS.neutral200,
+    padding: APP_SPACING.lg,
+    borderRadius: APP_RADIUS.card,
+    backgroundColor: APP_COLORS.white,
     borderWidth: 1,
-    borderRadius: APP_RADIUS.md,
-    padding: APP_SPACING.md,
-    marginBottom: APP_SPACING.lg,
-  },
-  attendanceSummaryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  attendanceSummaryTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  attendanceSummaryTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: APP_COLORS.neutral950,
-  },
-  attendanceCountText: {
-    fontSize: 13,
-    color: APP_COLORS.neutral700,
-  },
-  attendanceHighlight: {
-    fontWeight: '700',
-    color: APP_COLORS.primary,
-  },
-  progressBarTrack: {
-    height: 8,
-    backgroundColor: APP_COLORS.neutral200,
-    borderRadius: APP_RADIUS.pill,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: APP_COLORS.primary,
-    borderRadius: APP_RADIUS.pill,
-  },
-  actionsContainer: {
-    marginTop: APP_SPACING.xs,
-  },
-  buttonStack: {
-    gap: APP_SPACING.sm,
-  },
-  sessionFinishedNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: APP_SPACING.md,
-    backgroundColor: APP_COLORS.neutral100,
-    borderRadius: APP_RADIUS.md,
-    marginBottom: APP_SPACING.xs,
-  },
-  sessionFinishedText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: APP_COLORS.finished,
-  },
-  scheduleListSection: {
-    marginTop: APP_SPACING.xs,
-  },
-  scheduleListHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    borderColor: APP_COLORS.border,
     marginBottom: APP_SPACING.md,
   },
-  scheduleListTitle: {
+  activeCardOpen: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  activeCardTop: {
+    flex: 1,
+  },
+  activeCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+    paddingRight: APP_SPACING.sm,
+  },
+  activeCardBadgeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  activeCourseName: {
     fontSize: 16,
     fontWeight: '700',
-    color: APP_COLORS.neutral950,
+    color: APP_COLORS.navyHeading,
+    marginBottom: 4,
   },
-  scheduleListCountBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: APP_COLORS.neutral500,
-    backgroundColor: APP_COLORS.neutral100,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: APP_RADIUS.pill,
-  },
-  scheduleItemCard: {
-    marginBottom: APP_SPACING.md,
-    padding: APP_SPACING.md,
-  },
-  scheduleItemSelected: {
-    borderColor: APP_COLORS.primary500,
-    borderWidth: 1.5,
-    backgroundColor: '#FAF5FF',
-  },
-  scheduleItemTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  scheduleItemInfo: {
-    flex: 1,
-    marginRight: APP_SPACING.sm,
-  },
-  itemTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  itemCourseName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: APP_COLORS.neutral950,
-  },
-  selectedPill: {
-    backgroundColor: APP_COLORS.primary50,
-    borderColor: APP_COLORS.primary100,
-    borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: APP_RADIUS.pill,
-  },
-  selectedPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: APP_COLORS.primary,
-  },
-  itemClassText: {
+  activeCourseMeta: {
     fontSize: 13,
-    fontWeight: '500',
-    color: APP_COLORS.primary,
-    marginTop: 2,
+    color: APP_COLORS.textSecondary,
   },
-  itemMeta: {
-    fontSize: 12,
-    color: APP_COLORS.neutral500,
-    marginTop: 2,
+  chevronWrapper: {
+    paddingLeft: APP_SPACING.xs,
   },
-  itemDivider: {
-    height: 1,
-    backgroundColor: APP_COLORS.neutral200,
+  quickActionsGrid: {
+    flexDirection: 'row',
+    gap: APP_SPACING.sm,
     marginVertical: APP_SPACING.sm,
   },
-  itemFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  actionTile: {
+    flex: 1,
     alignItems: 'center',
-    paddingTop: 2,
+    justifyContent: 'center',
+    paddingVertical: APP_SPACING.md,
+    backgroundColor: APP_COLORS.white,
+    borderRadius: APP_RADIUS.card,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
   },
-  itemAttendanceGroup: {
-    flexDirection: 'row',
+  actionIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: APP_COLORS.softBlue,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    marginBottom: 6,
   },
-  itemAttendance: {
-    fontSize: 12,
-    color: APP_COLORS.neutral500,
-  },
-  quickRecapLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  quickRecapText: {
+  actionTileLabel: {
     fontSize: 12,
     fontWeight: '600',
+    color: APP_COLORS.navyHeading,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: APP_SPACING.lg,
+    marginBottom: APP_SPACING.sm,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: APP_COLORS.navyHeading,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: APP_COLORS.primary,
+  },
+  scheduleList: {
+    gap: APP_SPACING.sm,
+  },
+  scheduleItemCard: {
+    padding: APP_SPACING.md,
+    borderRadius: APP_RADIUS.card,
+    backgroundColor: APP_COLORS.white,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+  },
+  scheduleItemSelected: {
+    borderColor: APP_COLORS.primary,
+  },
+  scheduleRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  courseIndexBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: APP_COLORS.softBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: APP_SPACING.md,
+  },
+  courseIndexText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: APP_COLORS.primary,
+  },
+  courseInfoCol: {
+    flex: 1,
+  },
+  courseNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: APP_COLORS.navyHeading,
+    marginBottom: 2,
+  },
+  courseMetaText: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+  },
+  notificationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: APP_SPACING.md,
+    borderRadius: APP_RADIUS.card,
+    marginBottom: APP_SPACING.md,
+  },
+  bannerSuccess: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  bannerInfo: {
+    backgroundColor: APP_COLORS.softBlue,
+    borderWidth: 1,
+    borderColor: APP_COLORS.lightBlue,
+  },
+  notificationText: {
+    flex: 1,
+    fontSize: 13,
+    color: APP_COLORS.navyHeading,
+    marginLeft: APP_SPACING.sm,
+  },
+  closeNotification: {
+    padding: 4,
+  },
+  pressed: {
+    opacity: 0.75,
   },
 });
 

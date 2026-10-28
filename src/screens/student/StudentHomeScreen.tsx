@@ -1,31 +1,21 @@
-/**
- * StudentHomeScreen Component
- * Programmer: Hanna & Birela (Flow Praktikan, Form Presensi, Disabled/Empty State & Polish UI)
- * SRS-STU-001: Melihat jadwal praktikum beserta respons status sesi (BELUM DIBUKA, DIBUKA, SELESAI)
- * SRS-STU-002: Presensi kehadiran melalui tombol "Presensi Sekarang" saat sesi DIBUKA
- * SRS-STU-003: Feedback Modal / Toast menampilkan waktu kehadiran (timestamp) setelah presensi berhasil
- * SRS-VAL-001: Tombol presensi dinonaktifkan (disabled) saat sesi BELUM DIBUKA atau SELESAI
- * SRS-VAL-002: Validasi pencegahan presensi ganda untuk mahasiswa yang sama
- * SRS-UI-004: Tampilan penjelasan (Empty/Disabled State View) saat sesi belum buka atau tutup
- * SRS-UI-005: Responsive Flexbox Layout & Polished UI
- * Follows DSG.md Section 10, 15, 16, 18, 21, 23, 25
- */
-
 import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   Modal,
-  TouchableWithoutFeedback,
+  Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp, AttendanceResult } from '@/context/AppContext';
 import { Card } from '@/components/Card';
 import { StatusBadge } from '@/components/StatusBadge';
 import { CustomButton } from '@/components/CustomButton';
+import { AppHeader } from '@/components/AppHeader';
+import { BottomNavigation } from '@/components/BottomNavigation';
+import { HeaderRolePicker } from '@/components/HeaderRolePicker';
 import { NavigationProp } from '@/navigation/navigationTypes';
 import {
   APP_COLORS,
@@ -73,14 +63,9 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
 
   const isSessionOpen = currentSchedule?.status === 'DIBUKA';
 
-  // SRS-STU-002: Aksi presensi saat sesi DIBUKA
   const handleAttendancePress = () => {
     if (!currentSchedule) return;
-
-    // Panggil logika presensi dengan validasi waktu & validasi presensi ganda
     const result: AttendanceResult = submitAttendance(currentSchedule.id);
-
-    // SRS-STU-003: Tampilkan feedback modal dengan waktu kehadiran
     setFeedbackModal({
       visible: true,
       success: result.success,
@@ -90,139 +75,90 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {/* Top Academic Blue Header */}
+      <AppHeader
+        title="PPK"
+        onNotificationPress={() => navigation.navigate('Notifications')}
+      />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Welcome Header Praktikan */}
-        <View style={styles.header}>
-          <Text style={styles.welcomeTitle}>Presensi Mahasiswa</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Pastikan Anda terhubung di jaringan lab dan berada di ruang kelas saat presensi
-          </Text>
+        {/* Greeting Section with Role Switcher */}
+        <View style={styles.greetingRow}>
+          <View style={styles.greetingTextGroup}>
+            <Text style={styles.greetingName}>
+              Halo, {activeUser.name.split(' ')[0]} 👋
+            </Text>
+            <Text style={styles.greetingRole}>
+              Praktikan · NIM {activeUser.nim || '-'}
+            </Text>
+          </View>
+          <HeaderRolePicker compact />
         </View>
 
-        {/* SRS-STU-001: Main Schedule & Session Status Focal Card */}
+        {/* Main Schedule & Presensi Card */}
         {currentSchedule && (
           <Card
-            style={styles.mainCard}
-            highlighted={isSessionOpen && !isAttended}>
+            style={[
+              styles.mainCard,
+              isSessionOpen && !isAttended && styles.mainCardOpen,
+            ]}>
             {/* Header: StatusBadge & Date */}
-            <View style={styles.statusRow}>
-              <StatusBadge status={currentSchedule.status} size="md" />
-              <View style={styles.dateBadge}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={13}
-                  color={APP_COLORS.neutral500}
-                />
-                <Text style={styles.dateText}>{currentSchedule.date}</Text>
+            <View style={styles.cardHeaderRow}>
+              <View>
+                <Text style={styles.cardSubtitleLabel}>Sesi Praktikum</Text>
+                <Text style={styles.courseTitle}>{currentSchedule.courseName}</Text>
               </View>
+              <StatusBadge status={currentSchedule.status} size="sm" />
             </View>
 
-            {/* Course Title & Class */}
-            <Text style={styles.courseTitle}>{currentSchedule.courseName}</Text>
-            <Text style={styles.classSubtitle}>{currentSchedule.className}</Text>
+            <Text style={styles.courseMeta}>
+              {currentSchedule.className} • {currentSchedule.time} | {currentSchedule.room}
+            </Text>
 
-            {/* Live Indicator Banner jika sesi DIBUKA */}
+            {/* Live Indicator Banner */}
             {isSessionOpen && !isAttended && (
               <View style={styles.liveBanner}>
                 <View style={styles.pulsingDot} />
                 <Text style={styles.liveBannerText}>
-                  Sesi Praktikum Dibuka • Presensi Tersedia Sekarang
+                  Sesi Sedang Dibuka • Presensi Aktif Sekarang
                 </Text>
               </View>
             )}
 
             <View style={styles.divider} />
 
-            {/* Session Info Grid */}
-            <View style={styles.infoGrid}>
-              <View style={styles.infoCol}>
-                <View style={styles.iconCircle}>
-                  <Ionicons
-                    name="time-outline"
-                    size={18}
-                    color={APP_COLORS.primary}
-                  />
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>Waktu Sesi</Text>
-                  <Text style={styles.infoValue}>{currentSchedule.time}</Text>
-                </View>
-              </View>
-
-              <View style={styles.infoCol}>
-                <View style={styles.iconCircle}>
-                  <Ionicons
-                    name="location-outline"
-                    size={18}
-                    color={APP_COLORS.primary}
-                  />
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>Ruangan</Text>
-                  <Text style={styles.infoValue}>{currentSchedule.room}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Asisten Info Row */}
-            <View style={styles.assistantRow}>
-              <Ionicons
-                name="person-circle-outline"
-                size={18}
-                color={APP_COLORS.neutral500}
-              />
-              <Text style={styles.assistantText}>
-                Asisten Lab:{' '}
-                <Text style={styles.assistantName}>
-                  {currentSchedule.assistantName}
-                </Text>
-              </Text>
-            </View>
-
-            {/* SRS-STU-002, SRS-VAL-001, SRS-VAL-002, SRS-UI-004: Dynamic Attendance CTA Section */}
+            {/* Attendance CTA Section */}
             <View style={styles.ctaContainer}>
-              {/* KASUS A: SUDAH PRESENSI (SRS-VAL-002: Validasi Presensi Ganda) */}
               {isAttended ? (
+                /* Kasus Sudah Presensi */
                 <View style={styles.attendedBox}>
-                  <View style={styles.attendedHeaderRow}>
+                  <View style={styles.attendedTitleRow}>
                     <Ionicons
                       name="checkmark-circle"
-                      size={24}
+                      size={20}
                       color={APP_COLORS.opened}
                     />
                     <Text style={styles.attendedTitle}>Kehadiran Tercatat</Text>
                   </View>
-                  <Text style={styles.attendedDescription}>
-                    Anda telah berhasil melakukan presensi pada sesi ini.
-                  </Text>
                   {studentRecord && (
-                    <View style={styles.timestampBadge}>
-                      <Ionicons
-                        name="time-outline"
-                        size={14}
-                        color={APP_COLORS.opened}
-                      />
-                      <Text style={styles.timestampBadgeText}>
-                        Waktu Presensi: {studentRecord.timestamp}
-                      </Text>
-                    </View>
+                    <Text style={styles.timestampText}>
+                      Waktu Presensi: {studentRecord.timestamp}
+                    </Text>
                   )}
                   <CustomButton
                     title="✓ Sudah Presensi"
                     variant="outline"
                     disabled
+                    size="md"
                     onPress={() => {}}
                     style={styles.attendedBtn}
                   />
-                  <Text style={styles.attendedHint}>
-                    Pencegahan presensi ganda aktif. Presensi Anda telah tersimpan di sistem.
-                  </Text>
                 </View>
               ) : isSessionOpen ? (
-                /* KASUS B: SESI DIBUKA & BELUM PRESENSI (SRS-STU-002) */
+                /* Kasus Sesi Dibuka & Belum Presensi */
                 <View>
                   <CustomButton
                     title="Presensi Sekarang"
@@ -231,69 +167,41 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
                     leftIcon={
                       <Ionicons
                         name="checkmark-circle"
-                        size={22}
+                        size={20}
                         color={APP_COLORS.white}
                       />
                     }
                     onPress={handleAttendancePress}
                   />
                   <Text style={styles.ctaHint}>
-                    Tekan tombol di atas untuk mencatatkan kehadiran Anda secara realtime
+                    Tekan tombol untuk mencatatkan kehadiran Anda di sesi ini
                   </Text>
                 </View>
               ) : currentSchedule.status === 'BELUM_DIBUKA' ? (
-                /* KASUS C: SESI BELUM DIBUKA (SRS-VAL-001 & SRS-UI-004) */
-                <View style={styles.disabledStateView}>
-                  <View style={styles.disabledIconRow}>
-                    <View style={styles.iconCircleWarning}>
-                      <Ionicons
-                        name="time-outline"
-                        size={18}
-                        color={APP_COLORS.notOpened}
-                      />
-                    </View>
-                    <View style={styles.disabledTextGroup}>
-                      <Text style={styles.disabledStateTitle}>
-                        Presensi Belum Dibuka
-                      </Text>
-                      <Text style={styles.disabledStateSubtitle}>
-                        Sesi akan aktif setelah asisten membuka praktikum.
-                      </Text>
-                    </View>
-                  </View>
+                /* Kasus Belum Dibuka */
+                <View style={styles.disabledBox}>
+                  <Text style={styles.disabledText}>
+                    Sesi praktikum belum dibuka oleh asisten.
+                  </Text>
                   <CustomButton
                     title="Presensi Belum Dibuka"
                     variant="outline"
                     disabled
-                    size="lg"
+                    size="md"
                     onPress={() => {}}
                   />
                 </View>
               ) : (
-                /* KASUS D: SESI TELAH SELESAI / TUTUP (SRS-VAL-001 & SRS-UI-004) */
-                <View style={styles.disabledStateView}>
-                  <View style={styles.disabledIconRow}>
-                    <View style={styles.iconCircleFinished}>
-                      <Ionicons
-                        name="lock-closed"
-                        size={18}
-                        color={APP_COLORS.finished}
-                      />
-                    </View>
-                    <View style={styles.disabledTextGroup}>
-                      <Text style={styles.disabledStateTitle}>
-                        Sesi Telah Ditutup
-                      </Text>
-                      <Text style={styles.disabledStateSubtitle}>
-                        Presensi untuk sesi praktikum ini sudah berakhir.
-                      </Text>
-                    </View>
-                  </View>
+                /* Kasus Selesai */
+                <View style={styles.disabledBox}>
+                  <Text style={styles.disabledText}>
+                    Sesi praktikum telah ditutup. Presensi berakhir.
+                  </Text>
                   <CustomButton
                     title="Sesi Telah Ditutup"
                     variant="outline"
                     disabled
-                    size="lg"
+                    size="md"
                     onPress={() => {}}
                   />
                 </View>
@@ -302,231 +210,102 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
           </Card>
         )}
 
-        {/* SRS-STU-001: Daftar Jadwal Praktikan Lainnya */}
-        <View style={styles.scheduleListSection}>
-          <Text style={styles.scheduleListTitle}>Daftar Praktikum Saya</Text>
-          {schedules.map((item) => {
-            const isSelected = item.id === currentSchedule?.id;
-            const attendedItem = hasStudentAttended(item.id, activeUser.id);
+        {/* Section Jadwal Hari Ini */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Jadwal Hari Ini</Text>
+          <Pressable
+            onPress={() => navigation.navigate('ScheduleList')}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <Text style={styles.seeAllText}>Lihat Semua &gt;</Text>
+          </Pressable>
+        </View>
 
+        {/* Schedule List */}
+        <View style={styles.scheduleList}>
+          {schedules.map((item, idx) => {
+            const isSelected = item.id === currentSchedule?.id;
             return (
               <Card
                 key={item.id}
-                onPress={() => setActiveScheduleId(item.id)}
+                onPress={() => {
+                  setActiveScheduleId(item.id);
+                  navigation.navigate('SessionDetail', { scheduleId: item.id });
+                }}
                 style={[
                   styles.scheduleItemCard,
                   isSelected && styles.scheduleItemSelected,
                 ]}>
-                <View style={styles.scheduleItemTop}>
-                  <View style={styles.scheduleItemInfo}>
-                    <Text style={styles.itemCourseName}>{item.courseName}</Text>
-                    <Text style={styles.itemClassSubtitle}>
-                      {item.className} • {item.room}
-                    </Text>
-                    <Text style={styles.itemTimeText}>
-                      {item.date} • {item.time}
+                <View style={styles.scheduleRowContent}>
+                  <View style={styles.courseIndexBadge}>
+                    <Text style={styles.courseIndexText}>{idx + 1}</Text>
+                  </View>
+                  <View style={styles.courseInfoCol}>
+                    <Text style={styles.courseNameText}>{item.courseName}</Text>
+                    <Text style={styles.courseMetaText}>
+                      {item.time} | {item.room}
                     </Text>
                   </View>
                   <StatusBadge status={item.status} size="sm" />
-                </View>
-
-                <View style={styles.itemDivider} />
-
-                <View style={styles.itemFooter}>
-                  {attendedItem ? (
-                    <View style={styles.itemAttendedPill}>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={13}
-                        color={APP_COLORS.opened}
-                      />
-                      <Text style={styles.itemAttendedText}>Sudah Hadir</Text>
-                    </View>
-                  ) : item.status === 'DIBUKA' ? (
-                    <View style={styles.itemReadyPill}>
-                      <Ionicons
-                        name="alert-circle"
-                        size={13}
-                        color={APP_COLORS.opened}
-                      />
-                      <Text style={styles.itemReadyText}>Presensi Tersedia</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.itemStatusDesc}>
-                      {item.status === 'BELUM_DIBUKA'
-                        ? 'Menunggu sesi dibuka'
-                        : 'Sesi berakhir'}
-                    </Text>
-                  )}
-
-                  {isSelected && (
-                    <Text style={styles.selectedScheduleLabel}>
-                      Sedang Dipantau
-                    </Text>
-                  )}
                 </View>
               </Card>
             );
           })}
         </View>
-
-        {/* Navigasi ke Riwayat Kehadiran */}
-        <View style={styles.historyActionWrapper}>
-          <CustomButton
-            title="Catatan Kehadiran Saya"
-            variant="secondary"
-            size="md"
-            leftIcon={
-              <Ionicons
-                name="time-outline"
-                size={18}
-                color={APP_COLORS.primary}
-              />
-            }
-            rightIcon={
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={APP_COLORS.primary}
-              />
-            }
-            onPress={() => navigation.navigate('StudentHistory')}
-          />
-        </View>
       </ScrollView>
 
-      {/* SRS-STU-003: Feedback Modal Sukses / Validasi Presensi */}
+      {/* Feedback Modal Presensi */}
       <Modal
         visible={feedbackModal.visible}
         transparent
         animationType="fade"
-        onRequestClose={() =>
-          setFeedbackModal({ visible: false, success: false, message: '' })
-        }>
-        <TouchableWithoutFeedback
-          onPress={() =>
-            setFeedbackModal({ visible: false, success: false, message: '' })
-          }>
-          <View style={styles.feedbackOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={[styles.feedbackBox, APP_SHADOWS.modal]}>
-                {/* Status Icon */}
-                <View
-                  style={[
-                    styles.feedbackIconCircle,
-                    feedbackModal.success
-                      ? styles.feedbackSuccessCircle
-                      : styles.feedbackErrorCircle,
-                  ]}>
-                  <Ionicons
-                    name={
-                      feedbackModal.success
-                        ? 'checkmark-circle'
-                        : 'alert-circle'
-                    }
-                    size={46}
-                    color={
-                      feedbackModal.success
-                        ? APP_COLORS.opened
-                        : APP_COLORS.error
-                    }
-                  />
-                </View>
-
-                {/* Modal Title */}
-                <Text style={styles.feedbackTitle}>
-                  {feedbackModal.success
-                    ? 'Presensi Berhasil!'
-                    : 'Pemberitahuan Presensi'}
+        onRequestClose={() => setFeedbackModal((prev) => ({ ...prev, visible: false }))}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, APP_SHADOWS.modal]}>
+            <View
+              style={[
+                styles.feedbackIconBox,
+                feedbackModal.success
+                  ? styles.feedbackSuccessBox
+                  : styles.feedbackErrorBox,
+              ]}>
+              <Ionicons
+                name={feedbackModal.success ? 'checkmark-circle' : 'alert-circle'}
+                size={40}
+                color={
+                  feedbackModal.success ? APP_COLORS.opened : APP_COLORS.danger
+                }
+              />
+            </View>
+            <Text style={styles.modalFeedbackTitle}>
+              {feedbackModal.success ? 'Presensi Berhasil!' : 'Presensi Gagal'}
+            </Text>
+            <Text style={styles.modalFeedbackMessage}>
+              {feedbackModal.message}
+            </Text>
+            {feedbackModal.timestamp ? (
+              <View style={styles.modalTimeBox}>
+                <Ionicons name="time-outline" size={16} color={APP_COLORS.primary} />
+                <Text style={styles.modalTimeText}>
+                  Waktu: {feedbackModal.timestamp}
                 </Text>
-
-                {/* Feedback Description & Timestamp Banner */}
-                {feedbackModal.success ? (
-                  <View style={styles.successContent}>
-                    <View style={styles.timestampHighlightBox}>
-                      <Ionicons
-                        name="time"
-                        size={16}
-                        color={APP_COLORS.opened}
-                      />
-                      <Text style={styles.timestampHighlightText}>
-                        Waktu Kehadiran: {feedbackModal.timestamp}
-                      </Text>
-                    </View>
-
-                    {/* Receipt Details Card */}
-                    <View style={styles.receiptCard}>
-                      <View style={styles.receiptRow}>
-                        <Text style={styles.receiptLabel}>Praktikan</Text>
-                        <Text style={styles.receiptValue}>{activeUser.name}</Text>
-                      </View>
-                      <View style={styles.receiptRow}>
-                        <Text style={styles.receiptLabel}>NIM</Text>
-                        <Text style={styles.receiptValue}>
-                          {activeUser.nim || '-'}
-                        </Text>
-                      </View>
-                      <View style={styles.receiptRow}>
-                        <Text style={styles.receiptLabel}>Praktikum</Text>
-                        <Text style={styles.receiptValue}>
-                          {currentSchedule?.courseName} — {currentSchedule?.className}
-                        </Text>
-                      </View>
-                      <View style={styles.receiptRow}>
-                        <Text style={styles.receiptLabel}>Ruangan</Text>
-                        <Text style={styles.receiptValue}>
-                          {currentSchedule?.room}
-                        </Text>
-                      </View>
-                      <View style={styles.receiptRow}>
-                        <Text style={styles.receiptLabel}>Status</Text>
-                        <Text style={[styles.receiptValue, styles.receiptHadir]}>
-                          ✓ Hadir
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={styles.feedbackMessage}>
-                    {feedbackModal.message}
-                  </Text>
-                )}
-
-                {/* Modal Action Buttons */}
-                <View style={styles.feedbackBtnGroup}>
-                  {feedbackModal.success && (
-                    <CustomButton
-                      title="Lihat Catatan Kehadiran"
-                      variant="secondary"
-                      size="md"
-                      onPress={() => {
-                        setFeedbackModal({
-                          visible: false,
-                          success: false,
-                          message: '',
-                        });
-                        navigation.navigate('StudentHistory');
-                      }}
-                    />
-                  )}
-                  <CustomButton
-                    title={feedbackModal.success ? 'Selesai' : 'Oke, Mengerti'}
-                    variant={feedbackModal.success ? 'primary' : 'outline'}
-                    size="md"
-                    onPress={() =>
-                      setFeedbackModal({
-                        visible: false,
-                        success: false,
-                        message: '',
-                      })
-                    }
-                  />
-                </View>
               </View>
-            </TouchableWithoutFeedback>
+            ) : null}
+            <CustomButton
+              title="Tutup"
+              variant="primary"
+              size="md"
+              onPress={() => setFeedbackModal((prev) => ({ ...prev, visible: false }))}
+            />
           </View>
-        </TouchableWithoutFeedback>
+        </View>
       </Modal>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation
+        role="student"
+        activeTab="StudentHome"
+        onTabChange={(tabKey) => navigation.navigate(tabKey)}
+      />
     </SafeAreaView>
   );
 };
@@ -534,433 +313,257 @@ export const StudentHomeScreen: React.FC<StudentHomeScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: APP_COLORS.neutral50,
+    backgroundColor: APP_COLORS.background,
   },
   scrollContent: {
-    padding: APP_SPACING.xl,
-    paddingBottom: APP_SPACING.xxxl * 2,
+    paddingHorizontal: APP_SPACING.lg,
+    paddingTop: APP_SPACING.md,
+    paddingBottom: APP_SPACING.xl,
   },
-  header: {
-    marginBottom: APP_SPACING.lg,
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: APP_SPACING.md,
   },
-  welcomeTitle: {
-    fontSize: 22,
+  greetingTextGroup: {
+    flex: 1,
+    marginRight: APP_SPACING.sm,
+  },
+  greetingName: {
+    fontSize: 20,
     fontWeight: '700',
-    color: APP_COLORS.neutral950,
+    color: APP_COLORS.navyHeading,
   },
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: APP_COLORS.neutral500,
-    marginTop: 4,
-    lineHeight: 20,
+  greetingRole: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    marginTop: 2,
   },
   mainCard: {
-    marginBottom: APP_SPACING.xl,
-    padding: APP_SPACING.xl,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    padding: APP_SPACING.lg,
+    borderRadius: APP_RADIUS.card,
+    backgroundColor: APP_COLORS.white,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
     marginBottom: APP_SPACING.md,
   },
-  dateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: APP_COLORS.neutral100,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: APP_RADIUS.pill,
-    gap: 4,
+  mainCardOpen: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
   },
-  dateText: {
-    fontSize: 12,
-    color: APP_COLORS.neutral700,
-    fontWeight: '500',
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  cardSubtitleLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: APP_COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   courseTitle: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: '700',
-    color: APP_COLORS.neutral950,
-  },
-  classSubtitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: APP_COLORS.primary,
+    color: APP_COLORS.navyHeading,
     marginTop: 2,
+  },
+  courseMeta: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    marginBottom: APP_SPACING.sm,
   },
   liveBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.openedSoft,
-    borderColor: '#BBF7D0',
-    borderWidth: 1,
+    backgroundColor: '#DCFCE7',
     paddingVertical: 6,
-    paddingHorizontal: APP_SPACING.md,
-    borderRadius: APP_RADIUS.md,
-    marginTop: APP_SPACING.md,
-    gap: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginVertical: 6,
   },
   pulsingDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: APP_COLORS.opened,
+    marginRight: 6,
   },
   liveBannerText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: APP_COLORS.opened,
   },
   divider: {
     height: 1,
-    backgroundColor: APP_COLORS.neutral200,
-    marginVertical: APP_SPACING.lg,
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: APP_SPACING.md,
-    gap: APP_SPACING.md,
-  },
-  infoCol: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: APP_SPACING.sm,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: APP_COLORS.primary50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoLabel: {
-    fontSize: 11,
-    color: APP_COLORS.neutral500,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-  },
-  infoValue: {
-    fontSize: 13,
-    color: APP_COLORS.neutral950,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  assistantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: APP_COLORS.neutral100,
-    paddingHorizontal: APP_SPACING.md,
-    paddingVertical: 6,
-    borderRadius: APP_RADIUS.md,
-    gap: 6,
-    marginBottom: APP_SPACING.lg,
-  },
-  assistantText: {
-    fontSize: 12,
-    color: APP_COLORS.neutral700,
-  },
-  assistantName: {
-    fontWeight: '600',
-    color: APP_COLORS.neutral950,
+    backgroundColor: APP_COLORS.border,
+    marginVertical: APP_SPACING.md,
   },
   ctaContainer: {
-    marginTop: APP_SPACING.xs,
-  },
-  ctaHint: {
-    fontSize: 12,
-    color: APP_COLORS.neutral500,
-    textAlign: 'center',
-    marginTop: APP_SPACING.sm,
-    lineHeight: 18,
+    marginTop: 2,
   },
   attendedBox: {
-    backgroundColor: APP_COLORS.openedSoft,
-    borderColor: '#BBF7D0',
-    borderWidth: 1,
-    borderRadius: APP_RADIUS.md,
-    padding: APP_SPACING.md,
     alignItems: 'center',
+    paddingVertical: APP_SPACING.xs,
   },
-  attendedHeaderRow: {
+  attendedTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     marginBottom: 4,
   },
   attendedTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: APP_COLORS.opened,
   },
-  attendedDescription: {
+  timestampText: {
     fontSize: 13,
-    color: APP_COLORS.neutral700,
-    textAlign: 'center',
-    marginBottom: APP_SPACING.sm,
-  },
-  timestampBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: APP_COLORS.white,
-    paddingHorizontal: APP_SPACING.md,
-    paddingVertical: 4,
-    borderRadius: APP_RADIUS.pill,
-    gap: 6,
+    color: APP_COLORS.textSecondary,
     marginBottom: APP_SPACING.md,
   },
-  timestampBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: APP_COLORS.opened,
-  },
   attendedBtn: {
-    backgroundColor: APP_COLORS.white,
-    borderColor: '#86EFAC',
+    width: '100%',
+    backgroundColor: '#F8FAFC',
   },
-  attendedHint: {
-    fontSize: 11,
-    color: APP_COLORS.neutral500,
+  ctaHint: {
+    fontSize: 12,
+    color: APP_COLORS.textMuted,
     textAlign: 'center',
     marginTop: 8,
   },
-  disabledStateView: {
-    backgroundColor: APP_COLORS.neutral100,
-    borderColor: APP_COLORS.neutral200,
-    borderWidth: 1,
-    borderRadius: APP_RADIUS.md,
-    padding: APP_SPACING.md,
+  disabledBox: {
+    alignItems: 'center',
+    gap: 10,
   },
-  disabledIconRow: {
+  disabledText: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: APP_SPACING.sm,
-    marginBottom: APP_SPACING.md,
+    justifyContent: 'space-between',
+    marginTop: APP_SPACING.lg,
+    marginBottom: APP_SPACING.sm,
   },
-  iconCircleWarning: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: APP_COLORS.notOpenedSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircleFinished: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: APP_COLORS.finishedSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabledTextGroup: {
-    flex: 1,
-  },
-  disabledStateTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: APP_COLORS.neutral950,
-  },
-  disabledStateSubtitle: {
-    fontSize: 12,
-    color: APP_COLORS.neutral500,
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  scheduleListSection: {
-    marginBottom: APP_SPACING.lg,
-  },
-  scheduleListTitle: {
+  sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: APP_COLORS.neutral950,
-    marginBottom: APP_SPACING.md,
+    color: APP_COLORS.navyHeading,
   },
-  scheduleItemCard: {
-    marginBottom: APP_SPACING.md,
-    padding: APP_SPACING.md,
-  },
-  scheduleItemSelected: {
-    borderColor: APP_COLORS.primary500,
-    borderWidth: 1.5,
-    backgroundColor: '#FAF5FF',
-  },
-  scheduleItemTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  scheduleItemInfo: {
-    flex: 1,
-    marginRight: APP_SPACING.sm,
-  },
-  itemCourseName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: APP_COLORS.neutral950,
-  },
-  itemClassSubtitle: {
+  seeAllText: {
     fontSize: 13,
     fontWeight: '600',
     color: APP_COLORS.primary,
-    marginTop: 2,
   },
-  itemTimeText: {
-    fontSize: 12,
-    color: APP_COLORS.neutral500,
-    marginTop: 2,
+  scheduleList: {
+    gap: APP_SPACING.sm,
   },
-  itemDivider: {
-    height: 1,
-    backgroundColor: APP_COLORS.neutral200,
-    marginVertical: APP_SPACING.sm,
+  scheduleItemCard: {
+    padding: APP_SPACING.md,
+    borderRadius: APP_RADIUS.card,
+    backgroundColor: APP_COLORS.white,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
   },
-  itemFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  scheduleItemSelected: {
+    borderColor: APP_COLORS.primary,
   },
-  itemAttendedPill: {
+  scheduleRowContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: APP_COLORS.openedSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: APP_RADIUS.pill,
   },
-  itemAttendedText: {
-    fontSize: 11,
+  courseIndexBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: APP_COLORS.softBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: APP_SPACING.md,
+  },
+  courseIndexText: {
+    fontSize: 13,
     fontWeight: '700',
-    color: APP_COLORS.opened,
-  },
-  itemReadyPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: APP_COLORS.openedSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: APP_RADIUS.pill,
-  },
-  itemReadyText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: APP_COLORS.opened,
-  },
-  itemStatusDesc: {
-    fontSize: 12,
-    color: APP_COLORS.neutral500,
-  },
-  selectedScheduleLabel: {
-    fontSize: 11,
-    fontWeight: '600',
     color: APP_COLORS.primary,
   },
-  historyActionWrapper: {
-    marginTop: APP_SPACING.xs,
+  courseInfoCol: {
+    flex: 1,
   },
-  feedbackOverlay: {
+  courseNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: APP_COLORS.navyHeading,
+    marginBottom: 2,
+  },
+  courseMetaText: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+  },
+  modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: APP_SPACING.xl,
   },
-  feedbackBox: {
+  modalCard: {
     width: '100%',
     maxWidth: 380,
     backgroundColor: APP_COLORS.white,
-    borderRadius: APP_RADIUS.xl,
-    padding: APP_SPACING.xxl,
+    borderRadius: APP_RADIUS.modal,
+    padding: APP_SPACING.xl,
     alignItems: 'center',
   },
-  feedbackIconCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+  feedbackIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: APP_SPACING.md,
+  },
+  feedbackSuccessBox: {
+    backgroundColor: '#DCFCE7',
+  },
+  feedbackErrorBox: {
+    backgroundColor: '#FEE2E2',
+  },
+  modalFeedbackTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: APP_COLORS.navyHeading,
+    marginBottom: 6,
+  },
+  modalFeedbackMessage: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: APP_SPACING.md,
+  },
+  modalTimeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: APP_COLORS.softBlue,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     marginBottom: APP_SPACING.lg,
   },
-  feedbackSuccessCircle: {
-    backgroundColor: APP_COLORS.openedSoft,
-    borderColor: '#86EFAC',
-    borderWidth: 2,
-  },
-  feedbackErrorCircle: {
-    backgroundColor: APP_COLORS.errorSoft,
-    borderColor: '#FECACA',
-    borderWidth: 2,
-  },
-  feedbackTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: APP_COLORS.neutral950,
-    textAlign: 'center',
-    marginBottom: APP_SPACING.xs,
-  },
-  successContent: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: APP_SPACING.xl,
-  },
-  timestampHighlightBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: APP_COLORS.openedSoft,
-    paddingHorizontal: APP_SPACING.md,
-    paddingVertical: 6,
-    borderRadius: APP_RADIUS.pill,
-    gap: 6,
-    marginVertical: APP_SPACING.sm,
-  },
-  timestampHighlightText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: APP_COLORS.opened,
-  },
-  receiptCard: {
-    width: '100%',
-    backgroundColor: APP_COLORS.neutral50,
-    borderColor: APP_COLORS.neutral200,
-    borderWidth: 1,
-    borderRadius: APP_RADIUS.md,
-    padding: APP_SPACING.md,
-    marginTop: APP_SPACING.sm,
-    gap: 6,
-  },
-  receiptRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  receiptLabel: {
-    fontSize: 12,
-    color: APP_COLORS.neutral500,
-  },
-  receiptValue: {
+  modalTimeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: APP_COLORS.neutral950,
+    color: APP_COLORS.primary,
   },
-  receiptHadir: {
-    color: APP_COLORS.opened,
-    fontWeight: '700',
-  },
-  feedbackMessage: {
-    fontSize: 14,
-    color: APP_COLORS.neutral700,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: APP_SPACING.xl,
-  },
-  feedbackBtnGroup: {
-    width: '100%',
-    gap: APP_SPACING.sm,
+  pressed: {
+    opacity: 0.75,
   },
 });
 
